@@ -1,0 +1,239 @@
+{
+  "micJoho": {
+    "name": "総務省 情報通信審議会",
+    "url": "https://www.soumu.go.jp/main_sosiki/joho_tsusin/policyreports/joho_tsusin/kaigi_back.html",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": false,
+      "dateFormat": "%Y年%m月%d日",
+      "encoding": "shift-jis",
+      "dataListPath": "dl.idxLst",
+      "baseURL": "https://www.soumu.go.jp",
+      "path": {
+        "url": "dd",
+        "title": "dd",
+        "date": "dt"
+      }
+    }
+  },
+  "micNews": {
+    "name": "総務省 報道発表",
+    "url": "https://www.soumu.go.jp/menu_news/s-news/index.html",
+    "useDefaultFunc": false,
+    "funcID": "micNews",
+    "arg": {
+      "dateFormat": "%Y年%m月%d日",
+      "baseURL": "https://www.soumu.go.jp"
+    }
+  },
+  "micRSS": {
+    "name": "総務省RSS",
+    "url": "https://www.soumu.go.jp/news.rdf",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%Y-%m-%dT%X%z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated",
+        "org": "author"
+      }
+    }
+  },
+  "digitalConf": {
+    "name": "デジ庁 会議等",
+    "url": "https://www.digital.go.jp/news?category=146&",
+    "useDefaultFunc": false,
+    "funcID": "digitalNews",
+    "arg": {
+      "rss": false,
+      "nPage": 2,
+      "dateFormat": "%Y-%m-%d",
+      "baseURL": "https://www.digital.go.jp",
+      "dataListPath": "section.card",
+      "notWatchCategory": [
+        "申請・届出",
+        "採用"
+      ]
+    }
+  },
+  "digitalNews": {
+    "name": "デジ庁 報道発表",
+    "url": "https://www.digital.go.jp/news?",
+    "useDefaultFunc": false,
+    "funcID": "digitalNews",
+    "arg": {
+      "rss": false,
+      "nPage": 2,
+      "dateFormat": "%Y-%m-%d",
+      "baseURL": "https://www.digital.go.jp",
+      "dataListPath": "section.card",
+      "notWatchCategory": [
+        "申請・届出",
+        "採用",
+        "会議等"
+      ]
+    }
+  },
+  "mlitNewsRSS": {
+    "name": "国交省RSS",
+    "url": "https://www.mlit.go.jp/index.rdf",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%Y-%m-%dT%X%z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated",
+        "org": "author"
+      }
+    }
+  },
+  "mlitPressRSS": {
+    "name": "国交省 報道発表RSS",
+    "url": "https://www.mlit.go.jp/pressrelease.rdf",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%Y-%m-%dT%X%z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated",
+        "org": "author"
+      }
+    }
+  },
+  "metiNewsRSS": {
+    "name": "経産省 報道発表RSS",
+    "url": "https://www.meti.go.jp/ml_index_release_atom.xml",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%Y-%m-%dT%X%z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated"
+      }
+    }
+  },
+  "metiStatRSS": {
+    "name": "経産省 統計情報RSS",
+    "url": "https://www.meti.go.jp/statistics/st_news.xml",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%Y-%m-%dT%X%z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated"
+      }
+    }
+  },
+  "caoPressRSS": {
+    "name": "内閣府 報道発表RSS",
+    "url": "https://www.cao.go.jp/rss/news.rdf",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%Y-%m-%dT%X%z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated",
+        "org": "author"
+      }
+    }
+  },
+  "micDenpaKanri": {
+    "name": "総務省 電波監理審議会",
+    "url": "https://www.soumu.go.jp/main_sosiki/joho_tsusin/policyreports/denpa_kanri/kaigi_back.html",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": false,
+      "dateFormat": "%Y年%m月%d日",
+      "encoding": "shift-jis",
+      "dataListPath": "dl.idxLst",
+      "baseURL": "https://www.soumu.go.jp",
+      "path": {
+        "url": "dd",
+        "title": "dd",
+        "date": "dt"
+      }
+    }
+  },
+  "mhlwRSS": {
+    "name": "厚労省RSS",
+    "url": "https://www.mhlw.go.jp/stf/news.rdf",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%Y-%m-%dT%H:%M:%S%z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated"
+      }
+    }
+  },
+  "mlitAutomobile": {
+    "name": "国交省 物流・自動車",
+    "url": "https://www.mlit.go.jp/jidosha/news.html",
+    "useDefaultFunc": false,
+    "funcID": "mlitIndividualNews",
+    "arg": {
+      "dateFormat": "（%Y年%m月%d日）",
+      "dataListPath": "div.topicsList01 > ul",
+      "baseURL": "https://www.mlit.go.jp"
+    }
+  },
+  "mlitPolicy": {
+    "name": "国交省 総合政策",
+    "url": "https://www.mlit.go.jp/sogoseisaku/news.html",
+    "useDefaultFunc": false,
+    "funcID": "mlitIndividualNews",
+    "arg": {
+      "dateFormat": "（%Y年%m月%d日）",
+      "dataListPath": "div.topicsList01 > ul",
+      "baseURL": "https://www.mlit.go.jp"
+    }
+  },
+  "mlitAviation": {
+    "name": "国交省 航空",
+    "url": "https://www.mlit.go.jp/koku/news.html",
+    "useDefaultFunc": false,
+    "funcID": "mlitIndividualNews",
+    "arg": {
+      "dateFormat": "（%Y年%m月%d日）",
+      "dataListPath": "div.topicsList01 > ul",
+      "baseURL": "https://www.mlit.go.jp"
+    }
+  },
+  "metiShingikai": {
+    "name": "経産省 審議会・研究会",
+    "url": "https://www.meti.go.jp/shingikai/index.html",
+    "useDefaultFunc": true,
+    "arg": {
+      "dateFormat": "%Y年%m月%d日",
+      "rss": false,
+      "dataListPath": "dl.date_sp",
+      "baseURL": "https://www.meti.go.jp/",
+      "path": {
+        "url": "dd",
+        "title": "dd",
+        "date": "dt"
+      }
+    }
+  }
+}

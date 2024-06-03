@@ -1,0 +1,11 @@
+__pycache__
+demo
+
+Pipfile.lock
+test*
+sample*
+
+.env
+ws-db-11235813-firebase-adminsdk-lh4mi-ea44e3614e.json
+database.pkl
+database.xlsx
