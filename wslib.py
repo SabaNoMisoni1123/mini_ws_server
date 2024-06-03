@@ -21,7 +21,7 @@ class MinistrySiteDataGetter:
             "mlitNews": funclib.get_mlit_news,
             "mlitIndividualNews": funclib.get_mlit_individual_news,
         }
-        print(os.getenv("FIREBASE_CRED_FNAME"))
+        print("FIREBASE_CRED_FNAME", os.getenv("FIREBASE_CRED_FNAME"))
 
         cred = credentials.Certificate(os.getenv("FIREBASE_CRED_FNAME"))
         firebase_admin.initialize_app(cred)

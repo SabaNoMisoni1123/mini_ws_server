@@ -29,11 +29,11 @@ jobs:
         pip install -r requirements.txt
 
     - name: Make cred json
-      run: echo "${{ secrets.FIREBASE_CRED_JSON }}" > ${HOME}/firebase_credentials.json
+      run: echo "${{ secrets.FIREBASE_CRED_JSON }}" > $HOME/firebase_credentials.json
 
     - name: Run Python Script
       env:
-        FIREBASE_CRED_FNAME: ${HOME}/firebase_credentials.json
+        FIREBASE_CRED_FNAME: $HOME/firebase_credentials.json
       run: |
         python main.py
 
