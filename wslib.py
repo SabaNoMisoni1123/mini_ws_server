@@ -21,6 +21,7 @@ class MinistrySiteDataGetter:
             "mlitNews": funclib.get_mlit_news,
             "mlitIndividualNews": funclib.get_mlit_individual_news,
         }
+        print(os.getenv("FIREBASE_TYPE"))
 
         service_account_info = {
             "type": os.getenv("FIREBASE_TYPE"),
