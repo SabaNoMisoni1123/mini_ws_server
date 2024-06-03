@@ -1,6 +1,14 @@
 name: Firebase Firestore Access
 
-on: [push]
+on:
+  schedule:
+    - cron: '40 3 * * *'
+    - cron: '40 6 * * *'
+    - cron: '40 9 * * *'
+  push:
+    branches:
+      - master
+  workflow_dispatch
 
 jobs:
   access_firestore:
@@ -16,18 +24,28 @@ jobs:
         python-version: '3.11'
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
     - name: Check env
       env:
-        FIREBASE_ADMIN_SDK: ${{ secrets.FIREBASE_ADMIN_SDK }}
+        FIREBASE_TYPE: ${{ secrets.FIREBASE_TYPE }}
       run: |
-        echo "FIREBASE_ADMIN_SDK"
-        echo $FIREBASE_ADMIN_SDK
+        echo "FIREBASE_TYPE"
+        echo $FIREBASE_TYPE
 
 
     - name: Run FastAPI
       env:
-        FIREBASE_ADMIN_SDK: ${{ secrets.FIREBASE_ADMIN_SDK }}
-      run: uvicorn main:app --host 0.0.0.0 --port 8000
+        FIREBASE_TYPE: ${{ secrets.FIREBASE_TYPE }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_PRIVATE_KEY_ID: ${{ secrets.FIREBASE_PRIVATE_KEY_ID }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        FIREBASE_CLIENT_ID: ${{ secrets.FIREBASE_CLIENT_ID }}
+        FIREBASE_AUTH_URI: ${{ secrets.FIREBASE_AUTH_URI }}
+        FIREBASE_TOKEN_URI: ${{ secrets.FIREBASE_TOKEN_URI }}
+        FIREBASE_AUTH_PROVIDER_X509_CERT_URL: ${{ secrets.FIREBASE_AUTH_PROVIDER_X509_CERT_URL }}
+        FIREBAS_CLIENT_X509_CERT_URL: ${{ secrets.FIREBAS_CLIENT_X509_CERT_URL }}
+        FIREBASE_UNIVERSE_DOMAIN: ${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}
 
