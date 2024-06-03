@@ -6,9 +6,6 @@ site_dict = dict()
 with open("./urlList.json", encoding="utf-8") as f:
     site_dict = json.load(f)
 
-with open("/home/runner/firebase_credentials.json", "r") as f:
-    print(f.read())
-
 print(site_dict)
 
 ws_machine = MinistrySiteDataGetter()
