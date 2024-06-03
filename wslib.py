@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import feedparser
 import firebase_admin
 import requests
-import pandas as pd
 from bs4 import BeautifulSoup
 from firebase_admin import credentials, firestore
 
@@ -23,14 +22,27 @@ class MinistrySiteDataGetter:
             "mlitIndividualNews": funclib.get_mlit_individual_news,
         }
 
-        cred = credentials.Certificate(
-            "ws-db-11235813-firebase-adminsdk-lh4mi-ea44e3614e.json"
-        )
+        service_account_info = {
+            "type": os.getenv("FIREBASE_TYPE"),
+            "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+            "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+            "private_key": os.getenv("FIREBASE_PRIVATE_KEY"),
+            "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+            "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+            "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
+            "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv(
+                "FIREBASE_AUTH_PROVIDER_X509_CERT_URL"
+            ),
+            "client_x509_cert_url": os.getenv("FIREBAS_CLIENT_X509_CERT_URL"),
+            "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
+        }
+
+        cred = credentials.Certificate(service_account_info)
         firebase_admin.initialize_app(cred)
         self.db = firestore.client()
 
         self._hash = funclib.art_hash
-        self.df_database = pd.read_pickle("./database.pkl")
 
     def update_all_data(self, site_dict: dict):
         new_items = {}
@@ -93,8 +105,6 @@ class MinistrySiteDataGetter:
 
     def _add_new_item(self, item: dict, siteId: str):
         self.db.collection(siteId).add(item)
-        item["siteId"] = siteId
-        self.df_database = pd.concat([self.df_database, pd.DataFrame([item])])
 
     def _get_w_beautifle_soup(self):
         response = requests.get(self.url)
@@ -212,12 +222,4 @@ if __name__ == "__main__":
 
     ws_machine = MinistrySiteDataGetter()
     ret = ws_machine.update_all_data(site_dict)
-
-    now_time = datetime.now()
-    save_dict = {
-        "time": now_time.strftime("%Y/%m/%d, %H:%M:%S"),
-        "log": ret,
-    }
-
-    with open("test.json", "w") as f:
-        json.dump(save_dict, f, indent=2)
+    print(ret)
