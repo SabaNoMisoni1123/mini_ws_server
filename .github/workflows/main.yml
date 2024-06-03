@@ -28,8 +28,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Make tmp cred json
+      run: echo "${{ secrets.FIREBASE_CRED_JSON }}" > /home/runner/firebase_credentials_tmp.json
+
     - name: Make cred json
-      run: printf "%s" "${{ secrets.FIREBASE_CRED_JSON }}" > /home/runner/firebase_credentials.json
+      env:
+        FIREBASE_CRED_FNAME_TMP: /home/runner/firebase_credentials_tmp.json
+        FIREBASE_CRED_FNAME: /home/runner/firebase_credentials.json
+      run: python make_cred.py
+
 
     - name: Run Python Script
       env:
