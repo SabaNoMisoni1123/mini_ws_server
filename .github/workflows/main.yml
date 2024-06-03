@@ -28,25 +28,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Check env
-      env:
-        FIREBASE_TYPE: ${{ secrets.FIREBASE_TYPE }}
-      run: |
-        echo "FIREBASE_TYPE"
-        echo $FIREBASE_TYPE
+    - name: Make cred json
+      run: echo "${{ secrets.FIREBASE_CRED_JSON }}" > ${HOME}/firebase_credentials.json
 
     - name: Run Python Script
       env:
-        FIREBASE_TYPE: ${{ secrets.FIREBASE_TYPE }}
-        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-        FIREBASE_PRIVATE_KEY_ID: ${{ secrets.FIREBASE_PRIVATE_KEY_ID }}
-        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-        FIREBASE_CLIENT_ID: ${{ secrets.FIREBASE_CLIENT_ID }}
-        FIREBASE_AUTH_URI: ${{ secrets.FIREBASE_AUTH_URI }}
-        FIREBASE_TOKEN_URI: ${{ secrets.FIREBASE_TOKEN_URI }}
-        FIREBASE_AUTH_PROVIDER_X509_CERT_URL: ${{ secrets.FIREBASE_AUTH_PROVIDER_X509_CERT_URL }}
-        FIREBAS_CLIENT_X509_CERT_URL: ${{ secrets.FIREBAS_CLIENT_X509_CERT_URL }}
-        FIREBASE_UNIVERSE_DOMAIN: ${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}
+        FIREBASE_CRED_FNAME: ${HOME}/firebase_credentials.json
       run: |
         python main.py
 
