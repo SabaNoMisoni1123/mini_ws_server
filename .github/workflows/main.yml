@@ -11,7 +11,7 @@ on:
   workflow_dispatch
 
 jobs:
-  access_firestore:
+  run_script:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,15 +28,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Check env
-      env:
-        FIREBASE_TYPE: ${{ secrets.FIREBASE_TYPE }}
-      run: |
-        echo "FIREBASE_TYPE"
-        echo $FIREBASE_TYPE
-
-
-    - name: Run FastAPI
+    - name: Run Python Script
       env:
         FIREBASE_TYPE: ${{ secrets.FIREBASE_TYPE }}
         FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -48,4 +40,6 @@ jobs:
         FIREBASE_AUTH_PROVIDER_X509_CERT_URL: ${{ secrets.FIREBASE_AUTH_PROVIDER_X509_CERT_URL }}
         FIREBAS_CLIENT_X509_CERT_URL: ${{ secrets.FIREBAS_CLIENT_X509_CERT_URL }}
         FIREBASE_UNIVERSE_DOMAIN: ${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}
+      run: |
+        python main.py
 
