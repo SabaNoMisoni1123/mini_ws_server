@@ -235,5 +235,22 @@
         "date": "dt"
       }
     }
+  },
+  "envCentralEarth": {
+    "name": "環境省 審議会開催情報",
+    "url": "https://www.env.go.jp/council/o_info.html",
+    "useDefaultFunc": false,
+    "funcID": "envCentralEarth",
+    "arg": {
+      "dateFormat": "%Y年%m月%d日",
+      "rss": false,
+      "dataListPath": "div.wysiwyg",
+      "baseURL": "https://www.env.go.jp/",
+      "path": {
+        "url": "a",
+        "title": "a",
+        "date": "li"
+      }
+    }
   }
 }

@@ -17,6 +17,18 @@ def art_hash(url, title, epoch):
     return ret_hash.hexdigest()
 
 
+def wareki_year(y_wareki: str):
+    nengo = y_wareki[0]
+    y = int(y_wareki[1:], 10)
+
+    if nengo.upper() == "R":
+        return y + 2018
+    elif nengo.upper() == "H":
+        return y + 1989
+    else:
+        return y
+
+
 # ID: micNEWS
 def get_mic_news(url, arg_dict):
     response = requests.get(url)
@@ -198,6 +210,43 @@ def get_mlit_individual_news(url, arg_dict):
                 "url": art_url,
                 "hash": art_hash(art_url, art_title, art_epoch),
                 "org": "国土交通省",
+            }
+        )
+
+    return ret_list
+
+
+# ID: envCentralEarth
+def get_env_news_conf(url, arg_dict):
+    ret_list = []
+
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
+    data = soup.select_one(arg_dict["dataListPath"])
+
+    re_date = re.compile(r"[A-Z](\d\d).\d+.\d+")
+
+    for article in data.find_all("li"):
+        art_title = article.text
+        if art_title == "現在お知らせはありません。":
+            continue
+
+        art_date_str = re_date.search(art_title).group().split(".")
+        art_epoch = int(
+            dt.datetime(
+                year=wareki_year(art_date_str[0]),
+                month=int(art_date_str[1], 10),
+                day=int(art_date_str[2], 10),
+            ).timestamp()
+        )
+        art_url = arg_dict["baseURL"] + article.select_one("a").get("href")[3:]
+        ret_list.append(
+            {
+                "epoch": art_epoch,
+                "title": art_title,
+                "url": art_url,
+                "hash": art_hash(art_url, art_title, art_epoch),
+                "org": "環境省 審議会情報",
             }
         )
 

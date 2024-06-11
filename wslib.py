@@ -20,6 +20,7 @@ class MinistrySiteDataGetter:
             "digitalNews": funclib.get_digital_news,
             "mlitNews": funclib.get_mlit_news,
             "mlitIndividualNews": funclib.get_mlit_individual_news,
+            "envCentralEarth": funclib.get_env_news_conf,
         }
 
         # service_account_info = {
@@ -38,7 +39,9 @@ class MinistrySiteDataGetter:
         #     "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
         # }
 
-        cred = credentials.Certificate("ws-db-11235813-firebase-adminsdk-lh4mi-50c38e64b5.json")
+        cred = credentials.Certificate(
+            "ws-db-11235813-firebase-adminsdk-lh4mi-50c38e64b5.json"
+        )
         firebase_admin.initialize_app(cred)
         self.db = firestore.client()
 
@@ -93,14 +96,14 @@ class MinistrySiteDataGetter:
         n_new_item = 0
         for item in data:
             # ハッシュから、既存の記事なのか確認
-            if item["hash"] in current_hash:
+            if len(current_hash) > 0 and item["hash"] in current_hash:
                 continue
             else:
                 # 追加
                 self._add_new_item(item, id)
                 n_new_item += 1
 
-        print(f"\tNumber of added Items: {n_new_item}")
+        print(f"\tNumber of added Items: {n_new_item} / {len(data)}")
         return n_new_item
 
     def _add_new_item(self, item: dict, siteId: str):
@@ -221,5 +224,7 @@ if __name__ == "__main__":
         site_dict = json.load(f)
 
     ws_machine = MinistrySiteDataGetter()
+    ret = ws_machine.update_all_data(site_dict)
+    print(ret)
     ret = ws_machine.update_all_data(site_dict)
     print(ret)
