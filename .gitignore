@@ -6,7 +6,6 @@ test*
 sample*
 
 .env
-ws-*.json
 database.pkl
 database.xlsx
 /**/bat/
