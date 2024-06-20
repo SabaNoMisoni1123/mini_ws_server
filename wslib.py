@@ -202,9 +202,12 @@ class MinistrySiteDataGetter:
         ret_no = 0
 
         for k in site_dict.keys():
+            print(f"Site ID: {k}")
             if k in current_site_ids:
+                print("\tAlready added")
                 continue
             else:
+                print("\tNew source")
                 new_item = {
                     "id": k,
                     "no": no,
@@ -216,6 +219,24 @@ class MinistrySiteDataGetter:
                 no += 1
                 ret_no += 1
         return ret_no
+
+    def test_new_source(self, id, config: dict):
+        self.name = config["name"]
+        self.url = config["url"]
+        self.use_default_func = config["useDefaultFunc"]
+        self.arg = config["arg"]
+
+        if self.use_default_func is True and self.arg["rss"] is True:
+            # RSSの読み取り
+            data = self._get_w_feedpaser()
+        elif self.use_default_func is True:
+            # ウェブスクレイプをデフォルト関数で実施
+            data = self._get_w_beautifle_soup()
+        else:
+            # ウェブスクレイプを個別関数で実施
+            data = self.func_dict[config["funcID"]](self.url, self.arg)
+
+        return data
 
 
 if __name__ == "__main__":

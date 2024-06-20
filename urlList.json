@@ -252,5 +252,22 @@
         "date": "li"
       }
     }
+  },
+  "digitalRSS": {
+    "name": "デジ庁 RSS",
+    "url": "https://www.digital.go.jp/rss/news.xml",
+    "useDefaultFunc": true,
+    "funcID": "envCentralEarth",
+    "arg": {
+      "rss": true,
+      "dateFormat": "%a, %d %b %Y %H:%M:%S %z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated",
+        "org": "author"
+      }
+    }
   }
 }
