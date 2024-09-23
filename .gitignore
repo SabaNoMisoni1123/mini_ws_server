@@ -9,3 +9,5 @@ sample*
 database.pkl
 database.xlsx
 /**/bat/
+
+checkUrlList.json

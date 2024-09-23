@@ -1,6 +1,5 @@
 import datetime as dt
 import json
-import os
 from datetime import datetime, timedelta
 
 import feedparser
@@ -59,7 +58,7 @@ class MinistrySiteDataGetter:
         )
         return new_items
 
-    def append_new_data(self, id, config: dict):
+    def _scraper(self, id, config: dict):
         self.name = config["name"]
         self.url = config["url"]
         self.use_default_func = config["useDefaultFunc"]
@@ -74,6 +73,11 @@ class MinistrySiteDataGetter:
         else:
             # ウェブスクレイプを個別関数で実施
             data = self.func_dict[config["funcID"]](self.url, self.arg)
+
+        return data
+
+    def append_new_data(self, id, config: dict):
+        data = self._scraper(id, config)
 
         # dataを過去3日分とする
         today = datetime.now()
