@@ -268,5 +268,35 @@
         "org": "author"
       }
     }
+  },
+  "modUpdateRSS": {
+    "name": "防衛省 更新情報RSS",
+    "url": "https://www.mod.go.jp/j/rss/update.xml",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%a, %d %b %Y %H:%M:%S %z",
+      "dataListPath": "items",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "published"
+      }
+    }
+  },
+  "modNewsRSS": {
+    "name": "防衛省 新着情報RSS",
+    "url": "https://www.mod.go.jp/j/rss/news.xml",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%a, %d %b %Y %H:%M:%S %z",
+      "dataListPath": "items",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "published"
+      }
+    }
   }
 }
