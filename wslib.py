@@ -76,12 +76,12 @@ class MinistrySiteDataGetter:
 
         return data
 
-    def append_new_data(self, id, config: dict):
+    def append_new_data(self, id, config: dict, days=3):
         data = self._scraper(id, config)
 
         # dataを過去3日分とする
         today = datetime.now()
-        before_day = today - timedelta(days=3)
+        before_day = today - timedelta(days=days)
         before_day = datetime(
             year=before_day.year, month=before_day.month, day=before_day.day
         )
