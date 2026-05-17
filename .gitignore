@@ -8,6 +8,7 @@ sample*
 .env
 database.pkl
 database.xlsx
+scraper.log
 /**/bat/
 
 checkUrlList.json

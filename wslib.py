@@ -1,6 +1,9 @@
 import datetime as dt
 import json
+import logging
 from datetime import datetime, timedelta
+from pathlib import Path
+from urllib.parse import urljoin
 
 import feedparser
 import firebase_admin
@@ -11,9 +14,16 @@ from firebase_admin import credentials, firestore
 import funclib
 
 
+LOGGER = logging.getLogger(__name__)
+DEFAULT_TIMEOUT = 20
+
+
+class ScrapeError(Exception):
+    """Recoverable scraping error for one site."""
+
+
 class MinistrySiteDataGetter:
-    def __init__(self):
-        # 個別に実装した関数の登録
+    def __init__(self, credential_path="ws-db-11235813-firebase-adminsdk-lh4mi-50c38e64b5.json"):
         self.func_dict = {
             "micNews": funclib.get_mic_news,
             "digitalNews": funclib.get_digital_news,
@@ -21,235 +31,224 @@ class MinistrySiteDataGetter:
             "mlitIndividualNews": funclib.get_mlit_individual_news,
             "envCentralEarth": funclib.get_env_news_conf,
         }
+        self._hash = funclib.art_hash
+        self.errors = {}
 
-        # service_account_info = {
-        #     "type": os.getenv("FIREBASE_TYPE"),
-        #     "project_id": os.getenv("FIREBASE_PROJECT_ID"),
-        #     "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-        #     "private_key": os.getenv("FIREBASE_PRIVATE_KEY"),
-        #     "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-        #     "client_id": os.getenv("FIREBASE_CLIENT_ID"),
-        #     "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
-        #     "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
-        #     "auth_provider_x509_cert_url": os.getenv(
-        #         "FIREBASE_AUTH_PROVIDER_X509_CERT_URL"
-        #     ),
-        #     "client_x509_cert_url": os.getenv("FIREBAS_CLIENT_X509_CERT_URL"),
-        #     "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
-        # }
+        credential_path = Path(credential_path)
+        if not credential_path.is_absolute():
+            credential_path = Path(__file__).resolve().parent / credential_path
 
-        cred = credentials.Certificate(
-            "ws-db-11235813-firebase-adminsdk-lh4mi-50c38e64b5.json"
-        )
-        firebase_admin.initialize_app(cred)
+        if not firebase_admin._apps:
+            cred = credentials.Certificate(str(credential_path))
+            firebase_admin.initialize_app(cred)
         self.db = firestore.client()
 
-        self._hash = funclib.art_hash
-
     def update_all_data(self, site_dict: dict):
-        new_items = {}
-        for k in site_dict.keys():
-            print(k)
-            config = site_dict[k]
-            new_items[k] = self.append_new_data(k, config)
+        results = {}
+        self.errors = {}
 
-        self.db.collection("timeLog").document("lastTime").update(
-            {"lastTimeEpoch": int(datetime.now().timestamp() // 1000)}
-        )
-        return new_items
+        for site_id, config in site_dict.items():
+            LOGGER.info("Start site: %s", site_id)
+            try:
+                results[site_id] = self.append_new_data(site_id, config)
+            except Exception as exc:
+                LOGGER.exception("Failed site: %s", site_id)
+                self.errors[site_id] = str(exc)
+                results[site_id] = -1
 
-    def _scraper(self, id, config: dict):
+        try:
+            self.db.collection("timeLog").document("lastTime").update(
+                {"lastTimeEpoch": int(datetime.now().timestamp())}
+            )
+        except Exception:
+            LOGGER.exception("Failed to update timeLog/lastTime")
+
+        return results
+
+    def _scraper(self, site_id, config: dict):
+        self._validate_config(site_id, config)
         self.name = config["name"]
         self.url = config["url"]
         self.use_default_func = config["useDefaultFunc"]
-        self.arg = config["arg"]
+        self.arg = config.get("arg", {})
 
-        if self.use_default_func is True and self.arg["rss"] is True:
-            # RSSの読み取り
-            data = self._get_w_feedpaser()
-        elif self.use_default_func is True:
-            # ウェブスクレイプをデフォルト関数で実施
-            data = self._get_w_beautifle_soup()
-        else:
-            # ウェブスクレイプを個別関数で実施
-            data = self.func_dict[config["funcID"]](self.url, self.arg)
+        if self.use_default_func is True and self.arg.get("rss") is True:
+            return self._get_w_feedparser()
+        if self.use_default_func is True:
+            return self._get_w_beautiful_soup()
 
-        return data
+        func_id = config.get("funcID")
+        if func_id not in self.func_dict:
+            raise ScrapeError(f"Unknown funcID: {func_id}")
+        return self.func_dict[func_id](self.url, self.arg)
 
-    def append_new_data(self, id, config: dict, days=3):
-        data = self._scraper(id, config)
+    def append_new_data(self, site_id, config: dict, days=3):
+        data = self._scraper(site_id, config)
+        if not data:
+            LOGGER.warning("No scraped items: %s", site_id)
+            return 0
 
-        # dataを過去3日分とする
-        today = datetime.now()
-        before_day = today - timedelta(days=days)
-        before_day = datetime(
-            year=before_day.year, month=before_day.month, day=before_day.day
-        )
-        data = [item for item in data if item["epoch"] >= int(before_day.timestamp())]
+        before_day = datetime.now() - timedelta(days=days)
+        before_day = datetime(before_day.year, before_day.month, before_day.day)
+        min_epoch = int(before_day.timestamp())
+        data = [item for item in data if self._is_valid_item(item) and item["epoch"] >= min_epoch]
 
-        # 既存の記事
-        current_hash = [
-            doc.get("hash")
-            for doc in self.db.collection(id)
-            .order_by("epoch", direction=firestore.Query.DESCENDING)
-            .limit(50)
-            .select(["hash"])
-            .stream()
-        ]
-
-        n_new_item = 0
+        current_hash = self._load_current_hashes(site_id)
+        added = 0
         for item in data:
-            # ハッシュから、既存の記事なのか確認
-            if len(current_hash) > 0 and item["hash"] in current_hash:
+            if item["hash"] in current_hash:
                 continue
-            else:
-                # 追加
-                self._add_new_item(item, id)
-                n_new_item += 1
+            try:
+                self._add_new_item(item, site_id)
+                current_hash.add(item["hash"])
+                added += 1
+            except Exception:
+                LOGGER.exception("Failed to add item: site=%s url=%s", site_id, item.get("url"))
 
-        print(f"\tNumber of added Items: {n_new_item} / {len(data)}")
-        return n_new_item
+        LOGGER.info("Added items: %s %s/%s", site_id, added, len(data))
+        return added
 
-    def _add_new_item(self, item: dict, siteId: str):
-        self.db.collection(siteId).add(item)
+    def _load_current_hashes(self, site_id):
+        try:
+            docs = (
+                self.db.collection(site_id)
+                .order_by("epoch", direction=firestore.Query.DESCENDING)
+                .limit(50)
+                .select(["hash"])
+                .stream()
+            )
+            return {doc.to_dict().get("hash") for doc in docs if doc.to_dict().get("hash")}
+        except Exception:
+            LOGGER.exception("Failed to load current hashes: %s", site_id)
+            return set()
 
-    def _get_w_beautifle_soup(self):
-        response = requests.get(self.url)
+    def _add_new_item(self, item: dict, site_id: str):
+        self.db.collection(site_id).add(item)
 
-        if "encording" in self.arg.keys():
+    def _get_w_beautiful_soup(self):
+        response = requests.get(self.url, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+        if "encoding" in self.arg:
             response.encoding = self.arg["encoding"]
 
-        soup = BeautifulSoup(response.content, "html.parser")
-        data = soup.select(self.arg["dataListPath"])[0]
-
+        soup = BeautifulSoup(response.text, "html.parser")
+        data = soup.select_one(self.arg["dataListPath"])
+        if data is None:
+            raise ScrapeError(f"Selector not found: {self.arg['dataListPath']}")
         return self._extract_data_from_soup(data)
 
+    # Backward-compatible alias for existing scripts.
+    def _get_w_beautifle_soup(self):
+        return self._get_w_beautiful_soup()
+
     def _extract_data_from_soup(self, data):
-        url_list = [
-            self.arg["baseURL"] + u.find("a").get("href")
-            for u in data.find_all(self.arg["path"]["url"])
-        ]
-        title_list = [t.get_text() for t in data.find_all(self.arg["path"]["title"])]
-        date_list = [
-            int(dt.datetime.strptime(d.get_text(), self.arg["dateFormat"]).timestamp())
-            for d in data.find_all(self.arg["path"]["date"])
-        ]
-
-        if "org" in self.arg["path"].keys():
-            org_list = [t.get_text() for t in data.find_all(self.arg["path"]["org"])]
-        else:
-            org_list = [self.name] * len(url_list)
+        path = self.arg["path"]
+        url_nodes = data.find_all(path["url"])
+        title_nodes = data.find_all(path["title"])
+        date_nodes = data.find_all(path["date"])
+        org_nodes = data.find_all(path["org"]) if "org" in path else []
 
         ret_list = []
-        for u, t, d, o in zip(url_list, title_list, date_list, org_list):
-            ret_list.append(
-                {
-                    "url": u,
-                    "title": t,
-                    "epoch": d,
-                    "hash": self._hash(u, t, d),
-                    "org": o,
-                }
-            )
-
+        for idx, (url_node, title_node, date_node) in enumerate(zip(url_nodes, title_nodes, date_nodes)):
+            try:
+                link = url_node.find("a")
+                href = link.get("href") if link else None
+                if not href:
+                    continue
+                title = title_node.get_text(strip=True)
+                epoch = int(dt.datetime.strptime(date_node.get_text(strip=True), self.arg["dateFormat"]).timestamp())
+                org = org_nodes[idx].get_text(strip=True) if idx < len(org_nodes) else self.name
+                url = urljoin(self.arg.get("baseURL", self.url), href)
+                ret_list.append({"url": url, "title": title, "epoch": epoch, "hash": self._hash(url, title, epoch), "org": org})
+            except Exception:
+                LOGGER.exception("Failed to parse default HTML item: %s", self.url)
         return ret_list
 
-    def _get_w_feedpaser(self):
-        ret_list = []
-        res = feedparser.parse(self.url)
-        data = self._move_feedpaser_dict(res, self.arg["dataListPath"])
+    def _get_w_feedparser(self):
+        response = requests.get(self.url, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+        res = feedparser.parse(response.content)
+        if getattr(res, "bozo", False):
+            LOGGER.warning("Feed parse warning: %s %s", self.url, getattr(res, "bozo_exception", ""))
 
+        data = self._move_feedparser_dict(res, self.arg["dataListPath"], default=[])
+        ret_list = []
         for art in data:
-            art_url = self._move_feedpaser_dict(art, self.arg["path"]["url"])
-            art_title = self._move_feedpaser_dict(art, self.arg["path"]["title"])
-            art_epoch = int(
-                dt.datetime.strptime(
-                    art[self.arg["path"]["date"]].replace("BST", "GMT"),
-                    self.arg["dateFormat"],
-                ).timestamp()
-            )
-
-            art_dict = {
-                "url": art_url,
-                "title": art_title,
-                "epoch": art_epoch,
-                "hash": self._hash(art_url, art_title, art_epoch),
-            }
-            if "org" in self.arg["path"].keys():
-                art_dict["org"] = self._move_feedpaser_dict(
-                    art, self.arg["path"]["org"]
+            try:
+                art_url = self._move_feedparser_dict(art, self.arg["path"]["url"])
+                art_title = self._move_feedparser_dict(art, self.arg["path"]["title"])
+                date_value = self._move_feedparser_dict(art, self.arg["path"]["date"])
+                art_epoch = int(dt.datetime.strptime(str(date_value).replace("BST", "GMT"), self.arg["dateFormat"]).timestamp())
+                org = (
+                    self._move_feedparser_dict(art, self.arg["path"]["org"], default=self.name)
+                    if "org" in self.arg["path"]
+                    else self.name
                 )
-            else:
-                art_dict["org"] = self.name
-            ret_list.append(art_dict)
-
+                ret_list.append({"url": art_url, "title": art_title, "epoch": art_epoch, "hash": self._hash(art_url, art_title, art_epoch), "org": org})
+            except Exception:
+                LOGGER.exception("Failed to parse feed item: %s", self.url)
         return ret_list
 
-    def _move_feedpaser_dict(self, tree_dict, path):
-        ret = tree_dict
-        if type(path) is list:
-            for p in path:
-                ret = ret[p]
-        else:
-            ret = ret[path]
+    # Backward-compatible alias for existing scripts.
+    def _get_w_feedpaser(self):
+        return self._get_w_feedparser()
 
-        return ret
+    def _move_feedparser_dict(self, tree_dict, path, default=None):
+        try:
+            ret = tree_dict
+            if isinstance(path, list):
+                for p in path:
+                    ret = ret[p]
+                return ret
+            return ret[path]
+        except (KeyError, IndexError, TypeError):
+            if default is not None:
+                return default
+            raise
+
+    # Backward-compatible alias for existing scripts.
+    def _move_feedpaser_dict(self, tree_dict, path):
+        return self._move_feedparser_dict(tree_dict, path)
 
     def add_site(self, site_dict):
         docs = self.db.collection("siteData").select(["id"]).stream()
-        current_site_ids = [
-            doc.to_dict().get("id") for doc in docs if doc.to_dict().get("id")
-        ]
-
-        print(current_site_ids)
+        current_site_ids = {doc.to_dict().get("id") for doc in docs if doc.to_dict().get("id")}
         no = len(current_site_ids)
-        ret_no = 0
+        added = 0
 
-        for k in site_dict.keys():
-            print(f"Site ID: {k}")
-            if k in current_site_ids:
-                print("\tAlready added")
+        for site_id, config in site_dict.items():
+            if site_id in current_site_ids:
+                LOGGER.info("Already added: %s", site_id)
                 continue
-            else:
-                print("\tNew source")
-                new_item = {
-                    "id": k,
-                    "no": no,
-                    "name": site_dict[k]["name"],
-                    "url": site_dict[k]["url"],
-                }
+            new_item = {"id": site_id, "no": no, "name": config["name"], "url": config["url"]}
+            self.db.collection("siteData").add(new_item)
+            no += 1
+            added += 1
+        return added
 
-                self.db.collection("siteData").add(new_item)
-                no += 1
-                ret_no += 1
-        return ret_no
+    def test_new_source(self, site_id, config: dict):
+        return self._scraper(site_id, config)
 
-    def test_new_source(self, id, config: dict):
-        self.name = config["name"]
-        self.url = config["url"]
-        self.use_default_func = config["useDefaultFunc"]
-        self.arg = config["arg"]
+    def _validate_config(self, site_id, config):
+        for key in ("name", "url", "useDefaultFunc", "arg"):
+            if key not in config:
+                raise ScrapeError(f"{site_id}: missing config key '{key}'")
+        if config["useDefaultFunc"] is False and "funcID" not in config:
+            raise ScrapeError(f"{site_id}: missing funcID")
 
-        if self.use_default_func is True and self.arg["rss"] is True:
-            # RSSの読み取り
-            data = self._get_w_feedpaser()
-        elif self.use_default_func is True:
-            # ウェブスクレイプをデフォルト関数で実施
-            data = self._get_w_beautifle_soup()
-        else:
-            # ウェブスクレイプを個別関数で実施
-            data = self.func_dict[config["funcID"]](self.url, self.arg)
-
-        return data
+    def _is_valid_item(self, item):
+        required = ("url", "title", "epoch", "hash", "org")
+        if not isinstance(item, dict) or any(key not in item for key in required):
+            LOGGER.warning("Skip invalid item: %s", item)
+            return False
+        return True
 
 
 if __name__ == "__main__":
-    site_dict = dict()
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     with open("./urlList.json", encoding="utf-8") as f:
         site_dict = json.load(f)
 
     ws_machine = MinistrySiteDataGetter()
-    ret = ws_machine.update_all_data(site_dict)
-    print(ret)
     ret = ws_machine.update_all_data(site_dict)
     print(ret)

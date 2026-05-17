@@ -1,144 +1,119 @@
 import datetime as dt
 import hashlib
+import logging
 import re
+from urllib.parse import urljoin
 
-import feedparser
 import requests
 from bs4 import BeautifulSoup
 from dateutil.relativedelta import relativedelta
 
 
-# hash function
-def art_hash(url, title, epoch):
-    ret_hash = hashlib.sha256(url.encode())
-    ret_hash.update(title.encode())
-    ret_hash.update(str(epoch).encode())
+LOGGER = logging.getLogger(__name__)
+DEFAULT_TIMEOUT = 20
 
+
+def art_hash(url, title, epoch):
+    ret_hash = hashlib.sha256(str(url).encode("utf-8"))
+    ret_hash.update(str(title).encode("utf-8"))
+    ret_hash.update(str(epoch).encode("utf-8"))
     return ret_hash.hexdigest()
 
 
 def wareki_year(y_wareki: str):
-    nengo = y_wareki[0]
+    if not y_wareki:
+        raise ValueError("empty wareki year")
+    nengo = y_wareki[0].upper()
     y = int(y_wareki[1:], 10)
 
-    if nengo.upper() == "R":
+    if nengo == "R":
         return y + 2018
-    elif nengo.upper() == "H":
-        return y + 1989
-    else:
-        return y
+    if nengo == "H":
+        return y + 1988
+    return y
 
 
-# ID: micNEWS
+def _get_soup(url, encoding=None):
+    response = requests.get(url, timeout=DEFAULT_TIMEOUT)
+    response.raise_for_status()
+    if encoding:
+        response.encoding = encoding
+    return BeautifulSoup(response.text, "html.parser")
+
+
+def _parse_epoch(value, date_format):
+    return int(dt.datetime.strptime(value.strip(), date_format).timestamp())
+
+
+def _text(node, default=""):
+    return node.get_text(strip=True) if node is not None else default
+
+
 def get_mic_news(url, arg_dict):
-    response = requests.get(url)
-    response.encoding = "shift-jis"
-
-    soup = BeautifulSoup(response.content, "html.parser")
-    table_row = soup.find_all("tr")
-
     ret_list = []
-    for r in table_row:
-        cols = r.find_all("td")
-        if len(cols) == 0 or "scope" not in cols[0].attrs:
-            continue
-
-        art_url = arg_dict["baseURL"] + cols[1].a.get("href")
-        art_title = cols[1].string
-        art_epoch = int(
-            dt.datetime.strptime(cols[0].string, arg_dict["dateFormat"]).timestamp()
-        )
-
-        ret_list.append(
-            {
-                "epoch": art_epoch,
-                "title": art_title,
-                "url": art_url,
-                "hash": art_hash(art_url, art_title, art_epoch),
-                "org": cols[2].string,
-            }
-        )
-
+    targets = [url]
     last_month = dt.datetime.today() + relativedelta(months=-1)
-    url_last_month = (
-        f"https://www.soumu.go.jp/menu_news/s-news/{last_month.strftime('%y%m')}m.html"
-    )
-    response = requests.get(url_last_month)
-    response.encoding = "shift-jis"
-    soup = BeautifulSoup(response.content, "html.parser")
-    table_row = soup.find_all("tr")[1:]
+    targets.append(f"https://www.soumu.go.jp/menu_news/s-news/{last_month.strftime('%y%m')}m.html")
 
-    for r in table_row:
-        cols = r.find_all("td")
-        if len(cols) == 0 or "scope" not in cols[0].attrs:
-            continue
-
-        art_epoch = int(
-            dt.datetime.strptime(cols[0].string, arg_dict["dateFormat"]).timestamp()
-        )
-        art_url = arg_dict["baseURL"] + cols[1].a.get("href")
-        art_title = cols[1].string
-
-        ret_list.append(
-            {
-                "epoch": art_epoch,
-                "title": art_title,
-                "url": art_url,
-                "hash": art_hash(art_url, art_title, art_epoch),
-                "org": cols[2].string,
-            }
-        )
-
+    for target_url in targets:
+        soup = _get_soup(target_url, encoding="shift-jis")
+        for row in soup.find_all("tr"):
+            try:
+                cols = row.find_all("td")
+                if len(cols) < 3 or "scope" not in cols[0].attrs or cols[1].a is None:
+                    continue
+                art_epoch = _parse_epoch(_text(cols[0]), arg_dict["dateFormat"])
+                art_url = urljoin(arg_dict["baseURL"], cols[1].a.get("href"))
+                art_title = _text(cols[1])
+                ret_list.append(
+                    {
+                        "epoch": art_epoch,
+                        "title": art_title,
+                        "url": art_url,
+                        "hash": art_hash(art_url, art_title, art_epoch),
+                        "org": _text(cols[2], "総務省"),
+                    }
+                )
+            except Exception:
+                LOGGER.exception("Failed to parse MIC news row: %s", target_url)
     return ret_list
 
 
-# ID: digitalNews
 def get_digital_news(url, arg_dict):
     ret_list = []
-
-    for i in range(arg_dict["nPage"]):
+    for i in range(arg_dict.get("nPage", 1)):
         url_sub = url + f"page={i}"
-        response = requests.get(url_sub)
-        soup = BeautifulSoup(response.content, "html.parser")
-        for card in soup.select("section.card"):
-            category = (
-                card.select_one("span.card__category")
-                .get_text()
-                .replace(" ", "")
-                .replace("\n", "")
-            )
-            if category in arg_dict["notWatchCategory"]:
-                continue
+        soup = _get_soup(url_sub)
+        for card in soup.select(arg_dict.get("dataListPath", "section.card")):
+            try:
+                category = _text(card.select_one("span.card__category")).replace(" ", "").replace("\n", "")
+                if category in arg_dict.get("notWatchCategory", []):
+                    continue
 
-            art_url = (
-                arg_dict["baseURL"] + card.select_one("a").get("href")
-                if card.select_one("a").get("href")[0] == "/"
-                else card.select_one("a").get("href")
-            )
-            art_title = (
-                f"（{category}） {card.select_one('.card__title > span').get_text()}"
-            )
-            art_epoch = int(
-                dt.datetime.strptime(
-                    card.select_one(".card__date > time").get("datetime"),
-                    arg_dict["dateFormat"],
-                ).timestamp()
-            )
+                link = card.select_one("a")
+                href = link.get("href") if link else None
+                title_node = card.select_one(".card__title > span")
+                time_node = card.select_one(".card__date > time")
+                if not href or title_node is None or time_node is None:
+                    continue
 
-            ret_list.append(
-                {
-                    "url": art_url,
-                    "title": art_title,
-                    "epoch": art_epoch,
-                    "hash": art_hash(art_url, art_title, art_epoch),
-                    "org": "デジタル庁",
-                }
-            )
-
+                art_url = urljoin(arg_dict["baseURL"], href)
+                art_title = f"【{category}】{_text(title_node)}" if category else _text(title_node)
+                art_epoch = _parse_epoch(time_node.get("datetime", ""), arg_dict["dateFormat"])
+                ret_list.append(
+                    {
+                        "url": art_url,
+                        "title": art_title,
+                        "epoch": art_epoch,
+                        "hash": art_hash(art_url, art_title, art_epoch),
+                        "org": "デジタル庁",
+                    }
+                )
+            except Exception:
+                LOGGER.exception("Failed to parse Digital Agency card: %s", url_sub)
     return ret_list
 
 
-# ID: mlitNews
 def get_mlit_news(url, arg_dict):
     today = dt.datetime.now()
     last_month = dt.datetime.today() + relativedelta(months=-1)
@@ -148,106 +123,100 @@ def get_mlit_news(url, arg_dict):
     ]
     ret_list = []
 
-    for u in urls:
-        response = requests.get(u)
-        soup = BeautifulSoup(response.content, "html.parser")
-
+    for target_url in urls:
+        soup = _get_soup(target_url)
         data = soup.select_one(arg_dict["dataListPath"])
-
-        art_epoch = 0
-        for child in data.children:
-            if child.name == "dt":
-                art_epoch = int(
-                    dt.datetime.strptime(
-                        child.get_text(), arg_dict["dateFormat"]
-                    ).timestamp()
-                )
-            elif child.name == "dd":
-                art_title = child.a.get_text()
-                art_url = arg_dict["baseURL"] + child.a.get("href")
-                ret_list.append(
-                    {
-                        "epoch": art_epoch,
-                        "title": art_title,
-                        "url": art_url,
-                        "hash": art_hash(art_url, art_title, art_epoch),
-                        "org": "国交省新着情報",
-                    }
-                )
-            else:
-                continue
-
-    return ret_list
-
-
-# ID: mlitIndividualNews
-def get_mlit_individual_news(url, arg_dict):
-    ret_list = []
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, "html.parser")
-    data = soup.select_one(arg_dict["dataListPath"])
-
-    re_date = re.compile("（\d+年\d+月\d+日）")
-
-    for article in data.find_all("a"):
-        art_title = re_date.sub("", article.text)
-
-        # 全角スペース対策
-        art_title = re.sub(r"\\u([0-9a-fA-F]{4})", " ", art_title)
-        art_title = art_title.replace("　", " ")
-
-        art_epoch = int(
-            dt.datetime.strptime(
-                re_date.search(article.text).group(), arg_dict["dateFormat"]
-            ).timestamp()
-        )
-        art_url = arg_dict["baseURL"] + article.get("href")
-
-        ret_list.append(
-            {
-                "epoch": art_epoch,
-                "title": art_title,
-                "url": art_url,
-                "hash": art_hash(art_url, art_title, art_epoch),
-                "org": "国土交通省",
-            }
-        )
-
-    return ret_list
-
-
-# ID: envCentralEarth
-def get_env_news_conf(url, arg_dict):
-    ret_list = []
-
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, "html.parser")
-    data = soup.select_one(arg_dict["dataListPath"])
-
-    re_date = re.compile(r"[A-Z](\d\d).\d+.\d+")
-
-    for article in data.find_all("li"):
-        art_title = article.text
-        if art_title == "現在お知らせはありません。":
+        if data is None:
+            LOGGER.warning("MLIT data selector not found: %s", target_url)
             continue
 
-        art_date_str = re_date.search(art_title).group().split(".")
-        art_epoch = int(
-            dt.datetime(
-                year=wareki_year(art_date_str[0]),
-                month=int(art_date_str[1], 10),
-                day=int(art_date_str[2], 10),
-            ).timestamp()
-        )
-        art_url = arg_dict["baseURL"] + article.select_one("a").get("href")[3:]
-        ret_list.append(
-            {
-                "epoch": art_epoch,
-                "title": art_title,
-                "url": art_url,
-                "hash": art_hash(art_url, art_title, art_epoch),
-                "org": "環境省 審議会情報",
-            }
-        )
+        art_epoch = None
+        for child in data.children:
+            try:
+                if child.name == "dt":
+                    art_epoch = _parse_epoch(_text(child), arg_dict["dateFormat"])
+                elif child.name == "dd" and child.a is not None and art_epoch is not None:
+                    art_title = _text(child.a)
+                    art_url = urljoin(arg_dict["baseURL"], child.a.get("href"))
+                    ret_list.append(
+                        {
+                            "epoch": art_epoch,
+                            "title": art_title,
+                            "url": art_url,
+                            "hash": art_hash(art_url, art_title, art_epoch),
+                            "org": "国土交通省",
+                        }
+                    )
+            except Exception:
+                LOGGER.exception("Failed to parse MLIT news item: %s", target_url)
+    return ret_list
 
+
+def get_mlit_individual_news(url, arg_dict):
+    ret_list = []
+    soup = _get_soup(url)
+    data = soup.select_one(arg_dict["dataListPath"])
+    if data is None:
+        LOGGER.warning("MLIT individual selector not found: %s", url)
+        return ret_list
+
+    re_date = re.compile(r"（\d{4}年\d{1,2}月\d{1,2}日）")
+    for article in data.find_all("a"):
+        try:
+            match = re_date.search(article.get_text())
+            if match is None:
+                continue
+            art_title = re_date.sub("", article.get_text(" ", strip=True)).replace("\u3000", " ").strip()
+            art_epoch = _parse_epoch(match.group(), arg_dict["dateFormat"])
+            art_url = urljoin(arg_dict["baseURL"], article.get("href"))
+            ret_list.append(
+                {
+                    "epoch": art_epoch,
+                    "title": art_title,
+                    "url": art_url,
+                    "hash": art_hash(art_url, art_title, art_epoch),
+                    "org": "国土交通省",
+                }
+            )
+        except Exception:
+            LOGGER.exception("Failed to parse MLIT individual item: %s", url)
+    return ret_list
+
+
+def get_env_news_conf(url, arg_dict):
+    ret_list = []
+    soup = _get_soup(url)
+    data = soup.select_one(arg_dict["dataListPath"])
+    if data is None:
+        LOGGER.warning("Environment selector not found: %s", url)
+        return ret_list
+
+    re_date = re.compile(r"[A-Z]\d{1,2}\.\d{1,2}\.\d{1,2}")
+    for article in data.find_all("li"):
+        try:
+            art_title = article.get_text(" ", strip=True)
+            match = re_date.search(art_title)
+            link = article.select_one("a")
+            if match is None or link is None:
+                continue
+            art_date_str = match.group().split(".")
+            art_epoch = int(
+                dt.datetime(
+                    year=wareki_year(art_date_str[0]),
+                    month=int(art_date_str[1], 10),
+                    day=int(art_date_str[2], 10),
+                ).timestamp()
+            )
+            art_url = urljoin(arg_dict["baseURL"], link.get("href"))
+            ret_list.append(
+                {
+                    "epoch": art_epoch,
+                    "title": art_title,
+                    "url": art_url,
+                    "hash": art_hash(art_url, art_title, art_epoch),
+                    "org": "環境省",
+                }
+            )
+        except Exception:
+            LOGGER.exception("Failed to parse Environment Council item: %s", url)
     return ret_list
