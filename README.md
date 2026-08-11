@@ -54,9 +54,33 @@ python scripts/run.py partial-update --help
 | `export` | `python scripts/run.py export --site-id <site_id> --output backup.json` | 指定情報元の記事を JSON または CSV にエクスポートします。既存ファイルは上書きします。 |
 | `import` | `python scripts/run.py import <site_id> backup.csv` | JSON または CSV の記事を、既存の `hash` を除外して Firestore に追加します。 |
 | `export-delete` | `python scripts/run.py export-delete --site-id <site_id> --output backup.json --confirm-delete` | エクスポート成功後に、指定情報元の記事コレクションを削除します。削除確認オプションが必須です。 |
+| `sync-sources` | `python scripts/run.py sync-sources` | `config/sources.json` と Firestore の `siteData` の差分を表示します。既定は dry-run です。 |
 
-`update`、`add-source`、`import`、`export-delete` は Firestore を変更します。`update`、
+`update`、`add-source`、`import`、`export-delete`、`sync-sources --apply` は Firestore を変更します。`update`、
 `check-source`、`partial-update` は外部サイトへアクセスします。実行前に対象と認証情報を確認してください。
+
+## 情報元設定と Firestore の同期
+
+`config/sources.json` を情報元一覧の正として、Firestore の `siteData` を追加・更新・削除できます。
+まず dry-run で、追加・更新・再採番・削除の計画を確認してください。
+
+```bash
+python scripts/run.py sync-sources
+python scripts/run.py sync-sources --apply
+```
+
+削除対象がある適用では `--confirm-delete` が必須です。削除対象の記事はすべて JSON に保存して
+再読込検証した後にだけ削除されます。既定の保存先は実行日の
+`./backup-YYYY-MM-DD` で、`--backup-dir DIR` でも指定できます。
+
+```bash
+python scripts/run.py sync-sources --apply --confirm-delete
+python scripts/run.py sync-sources --apply --confirm-delete --backup-dir /path/to/backup
+```
+
+バックアップ先に同名の記事 JSON または `manifest.json` がある場合は停止します。意図して
+上書きする場合に限り `--overwrite-backup` を追加してください。削除途中で失敗した情報元は
+`siteData` 文書を残し、検証済みバックアップと `manifest.json` に結果を記録します。
 
 ## 従来の実行方法
 

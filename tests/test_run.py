@@ -118,6 +118,27 @@ class RunScriptTest(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, 2)
 
+    def test_sync_sources_arguments_are_parsed(self):
+        backup_dir = Path("backup")
+        with patch.object(run, "_sync_sources", return_value=0) as sync_sources:
+            exit_code = run.main(
+                [
+                    "sync-sources",
+                    "--apply",
+                    "--confirm-delete",
+                    "--backup-dir",
+                    str(backup_dir),
+                    "--overwrite-backup",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+        args = sync_sources.call_args.args[0]
+        self.assertTrue(args.apply)
+        self.assertTrue(args.confirm_delete)
+        self.assertEqual(args.backup_dir, backup_dir)
+        self.assertTrue(args.overwrite_backup)
+
 
 if __name__ == "__main__":
     unittest.main()

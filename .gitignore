@@ -12,4 +12,7 @@ scraper.log
 
 checkUrlList.json
 test*
+!tests/
+!tests/test_source_sync.py
+!tests/test_firestore_repository.py
 /**/tmp/

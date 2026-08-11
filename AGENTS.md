@@ -73,16 +73,19 @@ mini_ws_server/
 
 ## 開発・実行コマンド
 
-現行構成ではリポジトリルートから実行します。
+依存モジュールは Pipenv の仮想環境で管理しています。リポジトリルートから
+Python スクリプトやテストを実行するときは、仮想環境の依存を確実に使用するため
+`python` ではなく `pipenv run python` を用います。依存環境が未作成の場合は、先に
+`pipenv install --dev` で構築してください。
 
 ```bash
-pip install -r requirements.txt
-python main.py
-python scripts/check_source.py <site_id>
-python -m unittest discover -s tests
+pipenv run python main.py
+pipenv run python scripts/check_source.py <site_id>
+pipenv run python scripts/run.py sync-sources
+pipenv run python -m unittest discover -s tests
 ```
 
-`python main.py` は実サイト、Firebase 認証情報、Firestore を使用するため、通常の検証では実行しないでください。CI は `python -m unittest discover -s tests` を実行します。
+`pipenv run python main.py` は実サイト、Firebase 認証情報、Firestore を使用するため、通常の検証では実行しないでください。CI は CI 設定に記載されたコマンドを使用します。
 
 ## 実装ルール
 

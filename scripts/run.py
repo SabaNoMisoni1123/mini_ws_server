@@ -14,6 +14,7 @@ from mini_ws_server import cli  # noqa: E402
 from mini_ws_server.config import CHECK_SOURCES_PATH, SOURCES_PATH, load_site_config  # noqa: E402
 from mini_ws_server.data_transfer import ArticleDataTransfer  # noqa: E402
 from mini_ws_server.service import MinistrySiteDataGetter  # noqa: E402
+from mini_ws_server.source_sync import SourceSyncError, SourceSynchronizer  # noqa: E402
 
 
 HELP_TEXT = "このヘルプを表示して終了します。"
@@ -38,7 +39,12 @@ RUN_ARGUMENT_GUIDE = """実行形式と実行時引数:
   export-delete --site-id SITE_ID --output OUTPUT_FILE --confirm-delete
       --site-id SITE_ID: エクスポート・削除する情報元ID（必須）。
       --output OUTPUT_FILE: 出力する .json または .csv ファイル（必須、既存ファイルは上書き）。
-      --confirm-delete: 削除実行の確認（必須）。"""
+      --confirm-delete: 削除実行の確認（必須）。
+  sync-sources [--apply] [--confirm-delete] [--backup-dir DIR] [--overwrite-backup]
+      --apply: 差分を Firestore に反映します。省略時は dry-run です。
+      --confirm-delete: 削除対象を反映する場合の確認です。
+      --backup-dir DIR: 削除対象の記事バックアップ先です。
+      --overwrite-backup: 既存バックアップの上書きを許可します。"""
 
 
 def _add_help_option(parser: argparse.ArgumentParser) -> None:
@@ -122,6 +128,38 @@ def build_parser() -> argparse.ArgumentParser:
         default=PROJECT_ROOT / "sample.json",
         metavar="OUTPUT_FILE",
         help="更新結果の出力先 JSON ファイル（既定値: %(default)s）。既存ファイルは上書きします。",
+    )
+
+    sync_sources = commands.add_parser(
+        "sync-sources",
+        help="[--apply] [--confirm-delete]: sources.json と Firestore の情報元一覧を同期します。",
+        description=(
+            "config/sources.json を正として Firestore の siteData と比較します。"
+            "既定は変更を行わない dry-run です。"
+        ),
+        add_help=False,
+    )
+    _add_help_option(sync_sources)
+    sync_sources.add_argument(
+        "--apply",
+        action="store_true",
+        help="追加・更新・削除を Firestore に反映します。",
+    )
+    sync_sources.add_argument(
+        "--confirm-delete",
+        action="store_true",
+        help="削除対象がある場合、その削除を明示的に確認します。",
+    )
+    sync_sources.add_argument(
+        "--backup-dir",
+        type=Path,
+        metavar="DIR",
+        help="削除する記事のバックアップ先（既定値: ./backup-YYYY-MM-DD）。",
+    )
+    sync_sources.add_argument(
+        "--overwrite-backup",
+        action="store_true",
+        help="同名の既存バックアップファイルを上書きします。",
     )
 
     for command, help_text, description in (
@@ -234,6 +272,29 @@ def _manage_articles(args: argparse.Namespace, parser: argparse.ArgumentParser) 
     return 0
 
 
+def _sync_sources(args: argparse.Namespace) -> int:
+    """sources.json と Firestore の siteData の差分を確認・反映する。"""
+    from mini_ws_server.repositories.firestore import FirestoreRepository
+
+    sources = load_site_config(SOURCES_PATH)
+    synchronizer = SourceSynchronizer(
+        FirestoreRepository(),
+        config_path=SOURCES_PATH,
+    )
+    try:
+        result = synchronizer.synchronize(
+            sources,
+            apply=args.apply,
+            confirm_delete=args.confirm_delete,
+            backup_dir=args.backup_dir,
+            overwrite_backup=args.overwrite_backup,
+        )
+    except SourceSyncError as exc:
+        print(f"同期を中止しました: {exc}", file=sys.stderr)
+        return 1
+    return 0 if result.success else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     """指定された操作を実行する。"""
     parser = build_parser()
@@ -249,6 +310,8 @@ def main(argv: list[str] | None = None) -> int:
         return _list_sources()
     if args.command == "partial-update":
         return _partial_update(args.exclude_site_id, args.output)
+    if args.command == "sync-sources":
+        return _sync_sources(args)
     return _manage_articles(args, parser)
 
 

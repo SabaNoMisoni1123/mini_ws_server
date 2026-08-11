@@ -65,6 +65,33 @@ class FirestoreRepository:
             batch.commit()
         return len(documents)
 
+    def list_site_data(self) -> list:
+        """siteData の全属性と更新・削除用の文書参照を取得する。"""
+        from ..source_sync import SiteDataDocument
+
+        return [
+            SiteDataDocument(
+                document_id=document.id,
+                reference=document.reference,
+                data=document.to_dict(),
+            )
+            for document in self.db.collection("siteData").stream()
+        ]
+
+    def add_site_data(self, data: dict) -> None:
+        """同期済み属性を持つ siteData 文書を追加する。"""
+        self.db.collection("siteData").add(data)
+
+    @staticmethod
+    def update_site_data(reference: object, data: dict) -> None:
+        """既存 siteData 文書の同期対象属性を更新する。"""
+        reference.update(data)
+
+    @staticmethod
+    def delete_site_data(reference: object) -> None:
+        """既存 siteData 文書を削除する。"""
+        reference.delete()
+
     def update_last_run(self, epoch: int) -> None:
         self.db.collection("timeLog").document("lastTime").update({"lastTimeEpoch": epoch})
 
