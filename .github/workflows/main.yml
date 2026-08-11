@@ -1,33 +1,16 @@
-name: Firebase Firestore Access
+name: Test
 
-on: [push]
+on:
+  push:
+  pull_request:
 
 jobs:
-  access_firestore:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.11'
-
-    - name: Install dependencies
-      run: pip install -r requirements.txt
-
-    - name: Check env
-      env:
-        FIREBASE_ADMIN_SDK: ${{ secrets.FIREBASE_ADMIN_SDK }}
-      run: |
-        echo "FIREBASE_ADMIN_SDK"
-        echo $FIREBASE_ADMIN_SDK
-
-
-    - name: Run FastAPI
-      env:
-        FIREBASE_ADMIN_SDK: ${{ secrets.FIREBASE_ADMIN_SDK }}
-      run: uvicorn main:app --host 0.0.0.0 --port 8000
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests

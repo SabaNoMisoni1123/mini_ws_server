@@ -1,18 +1,7 @@
-import json
+"""互換入口。``python scripts/check_source.py`` を使用してください。"""
 
-from wslib import MinistrySiteDataGetter
+from scripts.check_source import main
 
-site_dict = dict()
-with open("./checkUrlList.json", encoding="utf-8") as f:
-    site_dict = json.load(f)
 
-ws_machine = MinistrySiteDataGetter()
-
-n = 1
-
-k = list(site_dict.keys())[n]
-
-print(k)
-
-data = ws_machine._scraper(k, site_dict[k])
-print(data)
+if __name__ == "__main__":
+    raise SystemExit(main())

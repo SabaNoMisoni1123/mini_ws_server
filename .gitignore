@@ -2,8 +2,7 @@ __pycache__
 demo
 
 Pipfile.lock
-test*
-sample*
+/sample*
 
 .env
 database.pkl
