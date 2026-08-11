@@ -2,8 +2,9 @@
 
 import json
 import logging
+from pathlib import Path
 
-from .config import PROJECT_ROOT, SOURCES_PATH, load_site_config
+from .config import SOURCES_PATH, load_site_config
 from .service import MinistrySiteDataGetter
 
 
@@ -14,7 +15,7 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(message)s",
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler(PROJECT_ROOT / "scraper.log", encoding="utf-8"),
+            logging.FileHandler(Path.cwd() / "scraper.log", encoding="utf-8"),
         ],
     )
     try:
