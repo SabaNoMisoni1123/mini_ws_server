@@ -1,0 +1,71 @@
+
+# codex_config_template.toml for Codex
+#
+# 移植先では project_root/.codex/config.toml として扱う。
+# モデル、承認、サンドボックス、TUI、MCP などの運用設定は、
+# 原則としてプロジェクトフォルダ内のこのファイルで完結させる。
+# $HOME/.codex/config.toml には、プロジェクトの trust_level だけを置く。
+
+# model
+model = "gpt-5.6"
+model_reasoning_effort = "medium"
+# 性能優先時の候補: medium, high, xhigh
+
+model_reasoning_summary = "concise"
+# さらに削減する場合の候補:
+# model_reasoning_summary = "none"
+# 性能・状況把握を優先する場合の候補:
+# model_reasoning_summary = "auto"
+
+model_verbosity = "low"
+# 性能・説明量を優先する場合の候補: medium, high
+
+# AGENTS.md 等のプロジェクト指示読み込み上限。
+# 低くしすぎると重要ルールが読み込まれないため、まずは 12KB 程度を既定にする。
+project_doc_max_bytes = 12000
+# 指示の取りこぼしを避けたい場合の候補: 16000, 32768
+
+# 編集を任せ、コマンドの承認も不要。
+sandbox_mode = "workspace-write"
+approval_policy = "never"
+
+# Codex の表示・応答スタイル
+personality = "pragmatic"
+
+# Web検索ツール
+# cached: 既定。OpenAI管理の検索キャッシュ
+# live: 最新情報取得。--search 相当
+# disabled: 無効
+web_search = "cached"
+approvals_reviewer = "auto_review"
+
+# 通知
+[tui]
+notifications = ["agent-turn-complete", "approval-requested"]
+notification_condition = "unfocused"
+notification_method = "auto"
+
+# workspace-write にした場合のみ有効
+# read-only のままなら実質使われません
+[sandbox_workspace_write]
+network_access = true
+exclude_slash_tmp = true
+exclude_tmpdir_env_var = true
+
+# PowerShell 環境では、shell に渡す環境変数を config.toml で明示すると
+# 起動時エラーの原因になる場合があるため、この雛形では
+# [shell_environment_policy] を定義しない。
+
+[features]
+undo = true
+shell_snapshot = true
+
+# MCPサーバ =======================================
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp@latest"]
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+startup_timeout_ms = 20_000
+
