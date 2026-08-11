@@ -25,7 +25,39 @@ pip install -e .
 
 Firestore を使用する実行には、サービスアカウント JSON のパスを `FIREBASE_ADMIN_SDK` 環境変数で指定します。認証情報はリポジトリに追加しないでください。
 
-## 実行
+## 統一コマンドによる実行
+
+`scripts/run.py` は、本プロジェクトの運用機能を一つにまとめたラッパースクリプトです。
+まず全操作の一覧を確認できます。
+
+```bash
+python scripts/run.py --help
+# 短縮形
+python scripts/run.py -h
+```
+
+各操作の引数、既定値、副作用は、操作名の後ろに `--help`（または `-h`）を付けて確認します。
+
+```bash
+python scripts/run.py partial-update --help
+```
+
+利用できる操作は次のとおりです。
+
+| 操作 | 実行例 | 動作 |
+| --- | --- | --- |
+| `update` | `python scripts/run.py update` | 全情報元の新着情報を取得し、Firestore を更新します。 |
+| `check-source` | `python scripts/run.py check-source <site_id>` | `checkUrlList.json` の候補を1件取得して、保存せずに解析結果を表示します。`site_id` を省略すると先頭の候補を使います。 |
+| `add-source` | `python scripts/run.py add-source` | 候補設定にのみある情報元を Firestore のサイト一覧へ追加します。 |
+| `partial-update` | `python scripts/run.py partial-update --exclude-site-id metiShingikai --output result.json` | 指定情報元を除外して取得し、結果をローカル JSON に保存します。既定の出力先は `sample.json` です。 |
+| `export` | `python scripts/run.py export <site_id> backup.json` | 指定情報元の記事を JSON または CSV にエクスポートします。既存ファイルは上書きしません。 |
+| `import` | `python scripts/run.py import <site_id> backup.csv` | JSON または CSV の記事を、既存の `hash` を除外して Firestore に追加します。 |
+| `export-delete` | `python scripts/run.py export-delete <site_id> backup.json --confirm-delete` | エクスポート成功後に、指定情報元の記事コレクションを削除します。削除確認オプションが必須です。 |
+
+`update`、`add-source`、`import`、`export-delete` は Firestore を変更します。`update`、
+`check-source`、`partial-update` は外部サイトへアクセスします。実行前に対象と認証情報を確認してください。
+
+## 従来の実行方法
 
 ```bash
 python main.py
