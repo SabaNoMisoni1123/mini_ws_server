@@ -46,6 +46,25 @@ class FirestoreRepository:
     def add_article(self, site_id: str, item: dict) -> None:
         self.db.collection(site_id).add(item)
 
+    def load_all_hashes(self, site_id: str) -> set[str]:
+        """指定情報元に保存済みの全記事ハッシュを取得する。"""
+        docs = self.db.collection(site_id).select(["hash"]).stream()
+        return {doc.to_dict().get("hash") for doc in docs if doc.to_dict().get("hash")}
+
+    def list_articles(self, site_id: str) -> list[dict]:
+        """指定情報元の全記事を取得する。"""
+        return [doc.to_dict() for doc in self.db.collection(site_id).stream()]
+
+    def delete_site_articles(self, site_id: str) -> int:
+        """指定情報元の記事ドキュメントをまとめて削除する。"""
+        documents = list(self.db.collection(site_id).stream())
+        for start in range(0, len(documents), 400):
+            batch = self.db.batch()
+            for document in documents[start : start + 400]:
+                batch.delete(document.reference)
+            batch.commit()
+        return len(documents)
+
     def update_last_run(self, epoch: int) -> None:
         self.db.collection("timeLog").document("lastTime").update({"lastTimeEpoch": epoch})
 

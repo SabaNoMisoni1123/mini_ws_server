@@ -42,6 +42,20 @@ python scripts/add_source.py
 
 これらのコマンドは外部サイトやFirestoreへアクセスするため、明示的に必要な場合だけ実行してください。
 
+## 情報元別データの入出力
+
+記事データは情報元 ID を指定して JSON または CSV にエクスポートできます。インポートでは
+`hash` が既に Firestore にある記事を更新せずにスキップします。
+
+```bash
+python scripts/manage_site_data.py export <site_id> backup.json
+python scripts/manage_site_data.py import <site_id> backup.csv
+python scripts/manage_site_data.py export-delete <site_id> backup.json --confirm-delete
+```
+
+出力ファイルが既にある場合は事故防止のため失敗します。`export-delete` はエクスポートが成功して
+から指定情報元の**記事コレクションだけ**を削除します。`siteData` の情報元一覧や設定ファイルは削除しません。
+
 ## テスト
 
 ```bash
