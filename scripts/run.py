@@ -20,7 +20,8 @@ from mini_ws_server.source_sync import SourceSyncError, SourceSynchronizer  # no
 HELP_TEXT = "このヘルプを表示して終了します。"
 RUN_ARGUMENT_GUIDE = """実行形式と実行時引数:
   update
-      引数なし。すべての有効な情報元を更新します。
+      [--days-range N]。すべての有効な情報元を更新します。
+      --days-range N: 確認する過去の日数（実行日を含む、既定値: 3）。
   check-source [SITE_ID]
       SITE_ID: 確認する候補情報元のID。省略時は先頭の候補を使用します。
   add-source
@@ -28,6 +29,7 @@ RUN_ARGUMENT_GUIDE = """実行形式と実行時引数:
   list
       引数なし。利用可能な情報元のID、名称、URLを表示します。
   partial-update [--exclude-site-id SITE_ID] [--output OUTPUT_FILE]
+      --days-range N: 確認する過去の日数（実行日を含む、既定値: 3）。
       --exclude-site-id SITE_ID: 更新対象から除外する情報元ID（既定値: metiShingikai）。
       --output OUTPUT_FILE: 結果を書き出すJSONファイル（既定値: sample.json）。
   export --site-id SITE_ID --output OUTPUT_FILE
@@ -74,6 +76,13 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
     )
     _add_help_option(update)
+    update.add_argument(
+        "--days-range",
+        type=cli._positive_int,
+        default=3,
+        metavar="N",
+        help="確認する過去の日数（実行日を基準、既定値: 3）。",
+    )
 
     check_source = commands.add_parser(
         "check-source",
@@ -116,6 +125,13 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
     )
     _add_help_option(partial_update)
+    partial_update.add_argument(
+        "--days-range",
+        type=cli._positive_int,
+        default=3,
+        metavar="N",
+        help="確認する過去の日数（実行日を基準、既定値: 3）。",
+    )
     partial_update.add_argument(
         "--exclude-site-id",
         default="metiShingikai",
@@ -244,10 +260,10 @@ def _list_sources() -> int:
     return 0
 
 
-def _partial_update(exclude_site_id: str, output: Path) -> int:
+def _partial_update(exclude_site_id: str, output: Path, days_range: int = 3) -> int:
     sources = load_site_config(SOURCES_PATH)
     sources.pop(exclude_site_id, None)
-    result = MinistrySiteDataGetter().update_all_data(sources)
+    result = MinistrySiteDataGetter().update_all_data(sources, days=days_range)
     record = {"ws_result": result, "timestamp": datetime.now().strftime("%m/%d %H:%M:%S")}
     output.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
     print(f"Saved update result to {output}")
@@ -301,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "update":
-        return cli.main()
+        return cli.main() if args.days_range == 3 else cli.main(days_range=args.days_range)
     if args.command == "check-source":
         return _check_source(args.site_id)
     if args.command == "add-source":
@@ -309,7 +325,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "list":
         return _list_sources()
     if args.command == "partial-update":
-        return _partial_update(args.exclude_site_id, args.output)
+        if args.days_range == 3:
+            return _partial_update(args.exclude_site_id, args.output)
+        return _partial_update(args.exclude_site_id, args.output, args.days_range)
     if args.command == "sync-sources":
         return _sync_sources(args)
     return _manage_articles(args, parser)

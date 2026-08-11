@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mini-ws-update = "mini_ws_server.cli:main"
+mini-ws-update = "mini_ws_server.cli:command_line_main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

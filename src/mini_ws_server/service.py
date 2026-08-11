@@ -34,13 +34,14 @@ class MinistrySiteDataGetter:
             repository = FirestoreRepository(credential_path)
         self.repository = repository
 
-    def update_all_data(self, site_dict: dict) -> dict[str, int]:
+    def update_all_data(self, site_dict: dict, days: int = 3) -> dict[str, int]:
+        """全情報元を指定した過去日数の範囲で更新する。"""
         results: dict[str, int] = {}
         self.errors = {}
         for site_id, config in site_dict.items():
             LOGGER.info("Start site: %s", site_id)
             try:
-                results[site_id] = self.append_new_data(site_id, config)
+                results[site_id] = self.append_new_data(site_id, config, days=days)
             except Exception as exc:
                 LOGGER.exception("Failed site: %s", site_id)
                 self.errors[site_id] = str(exc)
