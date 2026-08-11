@@ -70,16 +70,14 @@ def read_articles(input_path: str | Path) -> list[dict]:
 
 
 def write_articles(output_path: str | Path, articles: list[dict]) -> None:
-    """記事を JSON または CSV として保存する。既存ファイルは上書きしない。"""
+    """記事を JSON または CSV として保存する。既存ファイルは上書きする。"""
     path = Path(output_path)
-    if path.exists():
-        raise FileExistsError(f"Output file already exists: {path}")
     suffix = path.suffix.lower()
     rows = [_validate_article(article, index + 1) for index, article in enumerate(articles)]
     if suffix == ".json":
         path.write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     elif suffix == ".csv":
-        with path.open("x", encoding="utf-8", newline="") as file:
+        with path.open("w", encoding="utf-8", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=ARTICLE_FIELDS)
             writer.writeheader()
             writer.writerows(rows)

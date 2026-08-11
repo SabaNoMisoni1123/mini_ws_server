@@ -55,6 +55,33 @@ class ArticleDataTransferTest(unittest.TestCase):
             write_articles(path, [ARTICLE])
             self.assertEqual(read_articles(path), [ARTICLE])
 
+    def test_export_preserves_hash_in_json_and_csv(self):
+        repository = FakeRepository()
+        transfer = ArticleDataTransfer(repository)
+        with tempfile.TemporaryDirectory() as directory:
+            json_path = Path(directory) / "articles.json"
+            csv_path = Path(directory) / "articles.csv"
+
+            transfer.export_articles("example", json_path)
+            transfer.export_articles("example", csv_path)
+
+            self.assertEqual(
+                json.loads(json_path.read_text(encoding="utf-8"))[0]["hash"], "hash-1"
+            )
+            with csv_path.open(encoding="utf-8", newline="") as file:
+                self.assertEqual(next(csv.DictReader(file))["hash"], "hash-1")
+
+    def test_export_overwrites_an_existing_file(self):
+        repository = FakeRepository()
+        transfer = ArticleDataTransfer(repository)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "articles.json"
+            path.write_text('[{"old": true}]', encoding="utf-8")
+
+            transfer.export_articles("example", path)
+
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), [ARTICLE])
+
     def test_export_then_delete_happens_after_file_is_written(self):
         repository = FakeRepository()
         with tempfile.TemporaryDirectory() as directory:

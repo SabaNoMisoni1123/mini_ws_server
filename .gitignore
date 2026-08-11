@@ -11,3 +11,5 @@ scraper.log
 /**/bat/
 
 checkUrlList.json
+test*
+/**/tmp/

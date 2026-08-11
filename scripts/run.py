@@ -16,56 +16,111 @@ from mini_ws_server.data_transfer import ArticleDataTransfer  # noqa: E402
 from mini_ws_server.service import MinistrySiteDataGetter  # noqa: E402
 
 
+HELP_TEXT = "このヘルプを表示して終了します。"
+RUN_ARGUMENT_GUIDE = """実行形式と実行時引数:
+  update
+      引数なし。すべての有効な情報元を更新します。
+  check-source [SITE_ID]
+      SITE_ID: 確認する候補情報元のID。省略時は先頭の候補を使用します。
+  add-source
+      引数なし。候補設定にのみある情報元を追加します。
+  list
+      引数なし。利用可能な情報元のID、名称、URLを表示します。
+  partial-update [--exclude-site-id SITE_ID] [--output OUTPUT_FILE]
+      --exclude-site-id SITE_ID: 更新対象から除外する情報元ID（既定値: metiShingikai）。
+      --output OUTPUT_FILE: 結果を書き出すJSONファイル（既定値: sample.json）。
+  export --site-id SITE_ID --output OUTPUT_FILE
+      --site-id SITE_ID: エクスポートする情報元ID（必須）。
+      --output OUTPUT_FILE: 出力する .json または .csv ファイル（必須、既存ファイルは上書き）。
+  import SITE_ID INPUT_FILE
+      SITE_ID: インポート先の情報元ID（必須）。
+      INPUT_FILE: 読み込む .json または .csv ファイル（必須）。
+  export-delete --site-id SITE_ID --output OUTPUT_FILE --confirm-delete
+      --site-id SITE_ID: エクスポート・削除する情報元ID（必須）。
+      --output OUTPUT_FILE: 出力する .json または .csv ファイル（必須、既存ファイルは上書き）。
+      --confirm-delete: 削除実行の確認（必須）。"""
+
+
+def _add_help_option(parser: argparse.ArgumentParser) -> None:
+    """日本語のヘルプオプションを追加する。"""
+    parser.add_argument("-h", "--help", action="help", help=HELP_TEXT)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """統一ラッパー用の引数パーサーを作成する。"""
     parser = argparse.ArgumentParser(
         prog="python scripts/run.py",
         description=(
-            "官公庁用ウェブスクレイパーの更新・候補確認・記事データ管理を実行します。"
-            "各サブコマンドの詳細は `python scripts/run.py <command> --help` で確認できます。"
-        )
+            "官公庁用ウェブスクレイパーの更新・候補確認・記事データ管理を実行します。\n"
+            "各操作の詳細は `python scripts/run.py <command> --help` で確認できます。"
+        ),
+        epilog=RUN_ARGUMENT_GUIDE,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
     )
+    _add_help_option(parser)
     commands = parser.add_subparsers(dest="command", required=True, title="利用可能な操作")
 
-    commands.add_parser(
+    update = commands.add_parser(
         "update",
-        help="全ての有効な情報元を取得し、Firestore を更新します。",
+        help="引数なし: 全ての有効な情報元を取得し、Firestore を更新します。",
         description="config/sources.json の全情報元を取得し、新着記事を Firestore に追加します。",
+        add_help=False,
     )
+    _add_help_option(update)
 
     check_source = commands.add_parser(
         "check-source",
-        help="候補情報元を1件取得して解析結果を表示します。",
+        help="[SITE_ID]: 候補情報元を1件取得して解析結果を表示します。",
         description=(
             "checkUrlList.json の候補情報元を取得し、Firestore へ保存せず解析結果を表示します。"
         ),
+        add_help=False,
     )
+    _add_help_option(check_source)
     check_source.add_argument(
-        "site_id", nargs="?", help="確認するサイトID。省略時は設定ファイルの先頭の候補です。"
+        "site_id",
+        nargs="?",
+        metavar="SITE_ID",
+        help="確認する候補情報元のID。省略時は設定ファイルの先頭の候補を使用します。",
     )
 
-    commands.add_parser(
+    add_source = commands.add_parser(
         "add-source",
-        help="候補情報元を Firestore のサイト一覧へ追加します。",
+        help="引数なし: 候補情報元を Firestore のサイト一覧へ追加します。",
         description=(
             "checkUrlList.json にあって config/sources.json にない情報元を Firestore のサイト一覧へ追加します。"
         ),
+        add_help=False,
     )
+    _add_help_option(add_source)
+
+    list_sources = commands.add_parser(
+        "list",
+        help="引数なし: 利用可能な情報元のIDと概要を一覧表示します。",
+        description="config/sources.json の情報元ID、名称、URLを一覧表示します。",
+        add_help=False,
+    )
+    _add_help_option(list_sources)
 
     partial_update = commands.add_parser(
         "partial-update",
-        help="指定情報元を除外して更新結果をローカル JSON に保存します。",
+        help="[--exclude-site-id SITE_ID] [--output OUTPUT_FILE]: 更新結果をローカル JSON に保存します。",
         description="Firestore へ保存せず、取得結果をローカルファイルへ保存する確認用の更新です。",
+        add_help=False,
     )
+    _add_help_option(partial_update)
     partial_update.add_argument(
         "--exclude-site-id",
         default="metiShingikai",
+        metavar="SITE_ID",
         help="更新対象から除外するサイトID（既定値: metiShingikai）。",
     )
     partial_update.add_argument(
         "--output",
         type=Path,
         default=PROJECT_ROOT / "sample.json",
+        metavar="OUTPUT_FILE",
         help="更新結果の出力先 JSON ファイル（既定値: %(default)s）。既存ファイルは上書きします。",
     )
 
@@ -78,9 +133,39 @@ def build_parser() -> argparse.ArgumentParser:
             "エクスポート成功後、指定情報元の記事コレクションを削除します。",
         ),
     ):
-        data_command = commands.add_parser(command, help=help_text, description=description)
-        data_command.add_argument("site_id", help="対象となる情報元ID。")
-        data_command.add_argument("file", type=Path, help="入出力する .json または .csv ファイル。")
+        argument_summary = {
+            "export": "--site-id SITE_ID --output OUTPUT_FILE",
+            "import": "SITE_ID INPUT_FILE",
+            "export-delete": "--site-id SITE_ID --output OUTPUT_FILE --confirm-delete",
+        }[command]
+        data_command = commands.add_parser(
+            command,
+            help=f"{argument_summary}: {help_text}",
+            description=description,
+            add_help=False,
+        )
+        _add_help_option(data_command)
+        if command in {"export", "export-delete"}:
+            data_command.add_argument(
+                "--site-id",
+                required=True,
+                metavar="SITE_ID",
+                help="対象となる情報元ID。",
+            )
+            data_command.add_argument(
+                "--output",
+                type=Path,
+                required=True,
+                metavar="OUTPUT_FILE",
+                help="出力する .json または .csv ファイル。既存ファイルは上書きします。",
+            )
+        else:
+            data_command.add_argument(
+                "site_id", metavar="SITE_ID", help="対象となる情報元ID。"
+            )
+            data_command.add_argument(
+                "file", type=Path, metavar="INPUT_FILE", help="入力する .json または .csv ファイル。"
+            )
         if command == "export-delete":
             data_command.add_argument(
                 "--confirm-delete",
@@ -112,6 +197,15 @@ def _add_source() -> int:
     return 0
 
 
+def _list_sources() -> int:
+    """有効な情報元のID、名称、URLを表示する。"""
+    sources = load_site_config(SOURCES_PATH)
+    print("site_id\tname\turl")
+    for site_id, config in sorted(sources.items()):
+        print(f"{site_id}\t{config['name']}\t{config['url']}")
+    return 0
+
+
 def _partial_update(exclude_site_id: str, output: Path) -> int:
     sources = load_site_config(SOURCES_PATH)
     sources.pop(exclude_site_id, None)
@@ -130,12 +224,12 @@ def _manage_articles(args: argparse.Namespace, parser: argparse.ArgumentParser) 
 
     transfer = ArticleDataTransfer(FirestoreRepository())
     if args.command == "export":
-        print(f"Exported {transfer.export_articles(args.site_id, args.file)} articles.")
+        print(f"Exported {transfer.export_articles(args.site_id, args.output)} articles.")
     elif args.command == "import":
         added, skipped = transfer.import_articles(args.site_id, args.file)
         print(f"Imported {added} articles; skipped {skipped} existing articles.")
     else:
-        count = transfer.export_and_delete_articles(args.site_id, args.file)
+        count = transfer.export_and_delete_articles(args.site_id, args.output)
         print(f"Exported and deleted {count} articles.")
     return 0
 
@@ -151,6 +245,8 @@ def main(argv: list[str] | None = None) -> int:
         return _check_source(args.site_id)
     if args.command == "add-source":
         return _add_source()
+    if args.command == "list":
+        return _list_sources()
     if args.command == "partial-update":
         return _partial_update(args.exclude_site_id, args.output)
     return _manage_articles(args, parser)

@@ -12,9 +12,22 @@ from mini_ws_server.config import CHECK_SOURCES_PATH, load_site_config  # noqa: 
 from mini_ws_server.service import MinistrySiteDataGetter  # noqa: E402
 
 
+HELP_TEXT = "このヘルプを表示して終了します。"
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("site_id", nargs="?", help="確認するサイトID（未指定時は先頭）")
+    """候補情報元を取得して、保存せずに解析結果を表示する。"""
+    parser = argparse.ArgumentParser(
+        description="候補情報元を1件取得し、Firestore へ保存せずに解析結果を表示します。",
+        add_help=False,
+    )
+    parser.add_argument("-h", "--help", action="help", help=HELP_TEXT)
+    parser.add_argument(
+        "site_id",
+        nargs="?",
+        metavar="SITE_ID",
+        help="確認する候補情報元のID。省略時は設定ファイルの先頭の候補を使用します。",
+    )
     args = parser.parse_args()
     sources = load_site_config(CHECK_SOURCES_PATH)
     site_id = args.site_id or next(iter(sources), None)
