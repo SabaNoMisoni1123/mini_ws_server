@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mini-ws-server"
+version = "0.1.0"
+description = "官公庁サイトの新着情報を収集して Firestore に保存するツール"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4",
+    "feedparser",
+    "firebase-admin",
+    "python-dateutil",
+    "requests",
+]
+
+[project.scripts]
+mini-ws-update = "mini_ws_server.cli:command_line_main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -42,41 +42,6 @@
       }
     }
   },
-  "digitalConf": {
-    "name": "デジ庁 会議等",
-    "url": "https://www.digital.go.jp/news?category=146&",
-    "useDefaultFunc": false,
-    "funcID": "digitalNews",
-    "arg": {
-      "rss": false,
-      "nPage": 2,
-      "dateFormat": "%Y-%m-%d",
-      "baseURL": "https://www.digital.go.jp",
-      "dataListPath": "section.card",
-      "notWatchCategory": [
-        "申請・届出",
-        "採用"
-      ]
-    }
-  },
-  "digitalNews": {
-    "name": "デジ庁 報道発表",
-    "url": "https://www.digital.go.jp/news?",
-    "useDefaultFunc": false,
-    "funcID": "digitalNews",
-    "arg": {
-      "rss": false,
-      "nPage": 2,
-      "dateFormat": "%Y-%m-%d",
-      "baseURL": "https://www.digital.go.jp",
-      "dataListPath": "section.card",
-      "notWatchCategory": [
-        "申請・届出",
-        "採用",
-        "会議等"
-      ]
-    }
-  },
   "mlitNewsRSS": {
     "name": "国交省RSS",
     "url": "https://www.mlit.go.jp/index.rdf",
@@ -233,6 +198,52 @@
         "url": "dd",
         "title": "dd",
         "date": "dt"
+      }
+    }
+  },
+  "digitalRSS": {
+    "name": "デジ庁 RSS",
+    "url": "https://www.digital.go.jp/rss/news.xml",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%a, %d %b %Y %H:%M:%S %z",
+      "dataListPath": "entries",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "updated",
+        "org": "author"
+      }
+    }
+  },
+  "modUpdateRSS": {
+    "name": "防衛省 更新情報RSS",
+    "url": "https://www.mod.go.jp/j/rss/update.xml",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%a, %d %b %Y %H:%M:%S %z",
+      "dataListPath": "items",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "published"
+      }
+    }
+  },
+  "modNewsRSS": {
+    "name": "防衛省 新着情報RSS",
+    "url": "https://www.mod.go.jp/j/rss/news.xml",
+    "useDefaultFunc": true,
+    "arg": {
+      "rss": true,
+      "dateFormat": "%a, %d %b %Y %H:%M:%S %z",
+      "dataListPath": "items",
+      "path": {
+        "url": "link",
+        "title": "title",
+        "date": "published"
       }
     }
   }

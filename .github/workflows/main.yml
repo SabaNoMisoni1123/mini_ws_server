@@ -1,46 +1,16 @@
-name: Firebase Firestore Access
+name: Test
 
 on:
-  schedule:
-    - cron: '40 3 * * *'
-    - cron: '40 6 * * *'
-    - cron: '40 9 * * *'
   push:
-    branches:
-      - master
-  workflow_dispatch:
+  pull_request:
 
 jobs:
-  run_script:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.11'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Make tmp cred json
-      run: echo "${{ secrets.FIREBASE_CRED_JSON }}" > /home/runner/firebase_credentials_tmp.json
-
-    - name: Make cred json
-      env:
-        FIREBASE_CRED_FNAME_TMP: /home/runner/firebase_credentials_tmp.json
-        FIREBASE_CRED_FNAME: /home/runner/firebase_credentials.json
-      run: python make_cred.py
-
-
-    - name: Run Python Script
-      env:
-        FIREBASE_CRED_FNAME: /home/runner/firebase_credentials.json
-      run: |
-        python main.py
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests

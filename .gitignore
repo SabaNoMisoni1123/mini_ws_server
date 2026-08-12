@@ -2,10 +2,19 @@ __pycache__
 demo
 
 Pipfile.lock
-test*
-sample*
+/sample*
 
 .env
-ws-db-11235813-firebase-adminsdk-lh4mi-98e098abbe.json
 database.pkl
 database.xlsx
+scraper.log
+/**/bat/
+
+checkUrlList.json
+test*
+!tests/
+!tests/test_source_sync.py
+!tests/test_firestore_repository.py
+/**/tmp/
+/**/*.Identifier
+

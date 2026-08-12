@@ -1,0 +1,55 @@
+{
+  "executed_at": "2026-08-12T17:45:44.544880+09:00",
+  "config_path": "/home/sabamiso/workspace/mini_ws_server/config/sources.json",
+  "mode": "apply",
+  "backup_site_ids": [
+    "digitalNews",
+    "envCentralEarth",
+    "digitalConf"
+  ],
+  "backups": {
+    "digitalNews": {
+      "article_count": 1087,
+      "file": "digitalNews.json"
+    },
+    "envCentralEarth": {
+      "article_count": 345,
+      "file": "envCentralEarth.json"
+    },
+    "digitalConf": {
+      "article_count": 120,
+      "file": "digitalConf.json"
+    }
+  },
+  "result": {
+    "status": "completed",
+    "added": 1,
+    "updated": 13,
+    "deleted": 3,
+    "backed_up_articles": 1552,
+    "failed_ids": [],
+    "errors": {},
+    "site_results": {
+      "micJoho": "unchanged",
+      "micNews": "unchanged",
+      "micRSS": "unchanged",
+      "mlitPressRSS": "added",
+      "mlitNewsRSS": "updated",
+      "metiNewsRSS": "updated",
+      "metiStatRSS": "updated",
+      "caoPressRSS": "updated",
+      "micDenpaKanri": "updated",
+      "mhlwRSS": "updated",
+      "mlitAutomobile": "updated",
+      "mlitPolicy": "updated",
+      "mlitAviation": "updated",
+      "metiShingikai": "updated",
+      "digitalRSS": "updated",
+      "modUpdateRSS": "updated",
+      "modNewsRSS": "updated",
+      "digitalNews": "deleted",
+      "envCentralEarth": "deleted",
+      "digitalConf": "deleted"
+    }
+  }
+}

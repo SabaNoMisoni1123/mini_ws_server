@@ -1,14 +1,13 @@
-import json
+"""後方互換のための CLI 入口。実装は ``src/mini_ws_server/cli.py`` にある。"""
 
-from wslib import MinistrySiteDataGetter
+import sys
+from pathlib import Path
 
-site_dict = dict()
-with open("./urlList.json", encoding="utf-8") as f:
-    site_dict = json.load(f)
 
-print(site_dict)
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-ws_machine = MinistrySiteDataGetter()
-ret = ws_machine.update_all_data(site_dict)
+from mini_ws_server.cli import command_line_main, main  # noqa: E402
 
-print(ret)
+
+if __name__ == "__main__":
+    raise SystemExit(command_line_main(sys.argv[1:]))
