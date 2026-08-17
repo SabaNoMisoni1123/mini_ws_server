@@ -40,7 +40,35 @@ class RunScriptTest(unittest.TestCase):
             exit_code = run.main(["update"])
 
         self.assertEqual(exit_code, 0)
-        update_main.assert_called_once_with()
+        update_main.assert_called_once_with(
+            days_range=3,
+            log_file=None,
+            log_level="INFO",
+            allow_partial_success=False,
+        )
+
+    def test_update_forwards_logging_and_partial_success_arguments(self):
+        with patch.object(run.cli, "main", return_value=0) as update_main:
+            exit_code = run.main(
+                [
+                    "update",
+                    "--days-range",
+                    "7",
+                    "--log-file",
+                    "update.log",
+                    "--log-level",
+                    "DEBUG",
+                    "--allow-partial-success",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+        update_main.assert_called_once_with(
+            days_range=7,
+            log_file=Path("update.log"),
+            log_level="DEBUG",
+            allow_partial_success=True,
+        )
 
     def test_check_source_uses_requested_candidate(self):
         sources = {"candidate": {"name": "候補"}}

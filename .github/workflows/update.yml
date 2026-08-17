@@ -2,6 +2,12 @@ name: Update Firestore
 
 on:
   workflow_dispatch:
+    inputs:
+      days_range:
+        description: "取得対象とする過去の日数"
+        required: true
+        default: 3
+        type: number
   schedule:
     - cron: "15 12,15,18 * * *"
       timezone: "Asia/Tokyo"
@@ -40,16 +46,8 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
           chmod 600 "$RUNNER_TEMP/firebase-service-account.json"
 
-      - name: Run update with defaults
+      - name: Run update
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
-        run: python scripts/run.py update
-
-      - name: Upload scraper log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scraper-log-${{ github.run_id }}
-          path: scraper.log
-          if-no-files-found: ignore
-          retention-days: 7
+          DAYS_RANGE: ${{ inputs.days_range || 3 }}
+        run: python scripts/run.py update --days-range "$DAYS_RANGE"

@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from .models import Article
+from .models import Article, UpdateError, UpdateResult, safe_error_message
 from .scrapers.base import ScrapeError, article_hash
 
 
@@ -28,7 +28,7 @@ class MinistrySiteDataGetter:
             "envCentralEarth": "get_env_news_conf",
         }
         self._hash = article_hash
-        self.errors: dict[str, str] = {}
+        self.errors: list[UpdateError] = []
         if repository is None:
             from .repositories.firestore import FirestoreRepository
 
@@ -37,24 +37,37 @@ class MinistrySiteDataGetter:
             )
         self.repository = repository
 
-    def update_all_data(self, site_dict: dict, days: int = 3) -> dict[str, int]:
+    def update_all_data(self, site_dict: dict, days: int = 3) -> UpdateResult:
         """全情報元を指定した過去日数の範囲で更新する。"""
-        results: dict[str, int] = {}
-        self.errors = {}
+        result = UpdateResult()
+        self.errors = result.errors
         for site_id, config in site_dict.items():
             LOGGER.info("Start site: %s", site_id)
             try:
-                results[site_id] = self.append_new_data(site_id, config, days=days)
+                result.added[site_id] = self.append_new_data(site_id, config, days=days)
             except Exception as exc:
-                LOGGER.exception("Failed site: %s", site_id)
-                self.errors[site_id] = str(exc)
-                results[site_id] = -1
+                LOGGER.error("Failed site: %s (%s)", site_id, type(exc).__name__)
+                self.errors.append(
+                    UpdateError(
+                        scope="source",
+                        source_id=site_id,
+                        message=safe_error_message(exc),
+                    )
+                )
+                result.added[site_id] = 0
 
         try:
             self.repository.update_last_run(int(datetime.now().timestamp()))
-        except Exception:
-            LOGGER.exception("Failed to update timeLog/lastTime")
-        return results
+        except Exception as exc:
+            LOGGER.error("Failed to update timeLog/lastTime (%s)", type(exc).__name__)
+            self.errors.append(
+                UpdateError(
+                    scope="last_run",
+                    source_id=None,
+                    message=safe_error_message(exc),
+                )
+            )
+        return result
 
     def append_new_data(self, site_id: str, config: dict, days: int = 3) -> int:
         data = self._scraper(site_id, config)
@@ -63,9 +76,13 @@ class MinistrySiteDataGetter:
             return 0
 
         before_day = datetime.now() - timedelta(days=days)
-        minimum_epoch = int(datetime(before_day.year, before_day.month, before_day.day).timestamp())
+        minimum_epoch = int(
+            datetime(before_day.year, before_day.month, before_day.day).timestamp()
+        )
         valid_items = [
-            item for item in data if self._is_valid_item(item) and item["epoch"] >= minimum_epoch
+            item
+            for item in data
+            if self._is_valid_item(item) and item["epoch"] >= minimum_epoch
         ]
         current_hashes = self.repository.load_current_hashes(site_id)
         added = 0
@@ -76,8 +93,19 @@ class MinistrySiteDataGetter:
                 self.repository.add_article(site_id, item)
                 current_hashes.add(item["hash"])
                 added += 1
-            except Exception:
-                LOGGER.exception("Failed to add item: site=%s url=%s", site_id, item.get("url"))
+            except Exception as exc:
+                LOGGER.error(
+                    "Failed to add item: site=%s (%s)",
+                    site_id,
+                    type(exc).__name__,
+                )
+                self.errors.append(
+                    UpdateError(
+                        scope="article",
+                        source_id=site_id,
+                        message=safe_error_message(exc),
+                    )
+                )
         LOGGER.info("Added items: %s %s/%s", site_id, added, len(valid_items))
         return added
 
@@ -89,7 +117,9 @@ class MinistrySiteDataGetter:
         url = config["url"]
         arg = config.get("arg", {})
         if config["useDefaultFunc"]:
-            return generic_feed.scrape(url, name, arg) if arg.get("rss") else generic_html.scrape(url, name, arg)
+            if arg.get("rss"):
+                return generic_feed.scrape(url, name, arg)
+            return generic_html.scrape(url, name, arg)
 
         func_id = config.get("funcID")
         if func_id not in self.func_dict:

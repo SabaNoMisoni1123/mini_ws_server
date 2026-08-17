@@ -95,6 +95,13 @@ class FirestoreRepositoryTest(unittest.TestCase):
         )
         reference.delete.assert_called_once_with()
 
+    def test_load_current_hashes_propagates_firestore_failure(self):
+        collection = self.repository.db.collection.return_value
+        collection.order_by.side_effect = RuntimeError("read failed")
+
+        with self.assertRaisesRegex(RuntimeError, "read failed"):
+            self.repository.load_current_hashes("source")
+
 
 if __name__ == "__main__":
     unittest.main()

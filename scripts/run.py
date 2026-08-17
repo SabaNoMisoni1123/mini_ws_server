@@ -20,8 +20,12 @@ from mini_ws_server.source_sync import SourceSyncError, SourceSynchronizer  # no
 HELP_TEXT = "このヘルプを表示して終了します。"
 RUN_ARGUMENT_GUIDE = """実行形式と実行時引数:
   update
-      [--days-range N]。すべての有効な情報元を更新します。
+      [--days-range N] [--log-file PATH] [--log-level LEVEL]
+      [--allow-partial-success]。すべての有効な情報元を更新します。
       --days-range N: 確認する過去の日数（実行日を含む、既定値: 3）。
+      --log-file PATH: 指定時だけログをファイルにも保存します。
+      --log-level LEVEL: DEBUG、INFO、WARNING、ERROR（既定値: INFO）。
+      --allow-partial-success: 部分失敗があっても終了コード0を返します。
   check-source [SITE_ID]
       SITE_ID: 確認する候補情報元のID。省略時は先頭の候補を使用します。
   add-source
@@ -82,6 +86,23 @@ def build_parser() -> argparse.ArgumentParser:
         default=3,
         metavar="N",
         help="確認する過去の日数（実行日を基準、既定値: 3）。",
+    )
+    update.add_argument(
+        "--log-file",
+        type=Path,
+        metavar="PATH",
+        help="指定した場合だけ、標準エラーと同じログをファイルにも保存します。",
+    )
+    update.add_argument(
+        "--log-level",
+        choices=cli.LOG_LEVELS,
+        default="INFO",
+        help="ログレベル（既定値: %(default)s）。",
+    )
+    update.add_argument(
+        "--allow-partial-success",
+        action="store_true",
+        help="部分失敗があっても終了コード 0 を返します。",
     )
 
     check_source = commands.add_parser(
@@ -264,7 +285,10 @@ def _partial_update(exclude_site_id: str, output: Path, days_range: int = 3) -> 
     sources = load_site_config(SOURCES_PATH)
     sources.pop(exclude_site_id, None)
     result = MinistrySiteDataGetter().update_all_data(sources, days=days_range)
-    record = {"ws_result": result, "timestamp": datetime.now().strftime("%m/%d %H:%M:%S")}
+    record = {
+        "ws_result": result.to_dict(),
+        "timestamp": datetime.now().strftime("%m/%d %H:%M:%S"),
+    }
     output.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
     print(f"Saved update result to {output}")
     return 0
@@ -317,7 +341,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "update":
-        return cli.main() if args.days_range == 3 else cli.main(days_range=args.days_range)
+        return cli.main(
+            days_range=args.days_range,
+            log_file=args.log_file,
+            log_level=args.log_level,
+            allow_partial_success=args.allow_partial_success,
+        )
     if args.command == "check-source":
         return _check_source(args.site_id)
     if args.command == "add-source":

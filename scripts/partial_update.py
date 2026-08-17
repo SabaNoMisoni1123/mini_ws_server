@@ -17,7 +17,10 @@ def main() -> int:
     sources = load_site_config(SOURCES_PATH)
     sources.pop("metiShingikai", None)
     result = MinistrySiteDataGetter().update_all_data(sources)
-    record = {"ws_result": result, "timestamp": datetime.now().strftime("%m/%d %H:%M:%S")}
+    record = {
+        "ws_result": result.to_dict(),
+        "timestamp": datetime.now().strftime("%m/%d %H:%M:%S"),
+    }
     (PROJECT_ROOT / "sample.json").write_text(
         json.dumps(record, ensure_ascii=False), encoding="utf-8"
     )

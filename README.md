@@ -100,6 +100,14 @@ python main.py
 mini-ws-update
 ```
 
+更新ログは標準エラー、最終結果 JSON は標準出力へ出力されます。部分失敗時は、残りの情報元を
+処理した後に終了コード `1` を返します。必要な場合だけログファイルや互換動作を明示できます。
+
+```bash
+python scripts/run.py update --log-level DEBUG --log-file scraper.log
+python scripts/run.py update --allow-partial-success
+```
+
 候補サイトを確認するには、ローカル専用の `checkUrlList.json` を用意してから実行します。
 
 ```bash

@@ -29,18 +29,15 @@ class FirestoreRepository:
         self.db = firestore.client()
 
     def load_current_hashes(self, site_id: str) -> set[str]:
-        try:
-            docs = (
-                self.db.collection(site_id)
-                .order_by("epoch", direction=firestore.Query.DESCENDING)
-                .limit(50)
-                .select(["hash"])
-                .stream()
-            )
-            return {doc.to_dict().get("hash") for doc in docs if doc.to_dict().get("hash")}
-        except Exception:
-            LOGGER.exception("Failed to load current hashes: %s", site_id)
-            return set()
+        """直近の記事ハッシュを取得し、読込失敗は呼び出し元へ伝える。"""
+        docs = (
+            self.db.collection(site_id)
+            .order_by("epoch", direction=firestore.Query.DESCENDING)
+            .limit(50)
+            .select(["hash"])
+            .stream()
+        )
+        return {doc.to_dict().get("hash") for doc in docs if doc.to_dict().get("hash")}
 
     def add_article(self, site_id: str, item: dict) -> None:
         self.db.collection(site_id).add(item)
