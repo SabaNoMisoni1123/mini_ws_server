@@ -1,7 +1,6 @@
 """Firestore への記事・サイト情報の永続化。"""
 
 import logging
-import os
 from pathlib import Path
 
 import firebase_admin
@@ -9,24 +8,24 @@ from firebase_admin import credentials, firestore
 
 
 LOGGER = logging.getLogger(__name__)
-DEFAULT_CREDENTIAL_FILENAME = "ws-db-11235813-firebase-adminsdk-lh4mi-440ec2e232.json"
 
 
 class FirestoreRepository:
     """既存の Firestore コレクション構造を扱うリポジトリ。"""
 
     def __init__(self, credential_path: str | Path | None = None):
-        path = Path(
-            credential_path
-            or os.environ.get("FIREBASE_ADMIN_SDK")
-            or DEFAULT_CREDENTIAL_FILENAME
-        )
-        if not path.is_absolute():
-            path = Path(__file__).resolve().parents[3] / path
-
-        if not firebase_admin._apps:
-            credential = credentials.Certificate(str(path))
-            firebase_admin.initialize_app(credential)
+        """明示された鍵、または実行環境の ADC で Firebase を初期化する。"""
+        try:
+            firebase_admin.get_app()
+        except ValueError:
+            if credential_path is None:
+                firebase_admin.initialize_app()
+            else:
+                path = Path(credential_path)
+                if not path.is_absolute():
+                    path = Path(__file__).resolve().parents[3] / path
+                credential = credentials.Certificate(str(path))
+                firebase_admin.initialize_app(credential)
         self.db = firestore.client()
 
     def load_current_hashes(self, site_id: str) -> set[str]:

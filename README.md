@@ -23,7 +23,17 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-Firestore を使用する実行には、サービスアカウント JSON のパスを `FIREBASE_ADMIN_SDK` 環境変数で指定します。認証情報はリポジトリに追加しないでください。
+Firestore を使用する実行は Google Application Default Credentials（ADC）で認証します。
+ローカルでは、サービスアカウント JSON のパスを `GOOGLE_APPLICATION_CREDENTIALS` に指定します。
+従来の `FIREBASE_ADMIN_SDK` も互換性のため利用できます。認証情報はリポジトリに追加しないでください。
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="$PWD/ws-db-11235813-firebase-adminsdk-lh4mi-440ec2e232.json"
+pipenv run python scripts/run.py update
+```
+
+GitHub Actions の初期設定と手動確認は
+[`docs/github-actions-update-setup.md`](docs/github-actions-update-setup.md) を参照してください。
 
 ## 統一コマンドによる実行
 

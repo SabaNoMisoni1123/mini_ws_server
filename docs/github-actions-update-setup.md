@@ -7,7 +7,7 @@
 この文書では、GitHub Actions から次のコマンドを追加オプションなしで実行するために必要な設定を整理する。
 
 ```bash
-pipenv run python scripts/run.py update
+python scripts/run.py update
 ```
 
 このコマンドの既定動作は次のとおり。
@@ -64,10 +64,10 @@ Firebase Admin Python SDK の `credentials.Certificate()` は、サービスア�
 
 ## 4. GitHub Actions Secret の登録
 
-Secret 名は次で統一する。
+`docs/github_actions_firebase_webscraping_guide.md` に合わせ、Secret 名は次で統一する。
 
 ```text
-FIREBASE_ADMIN_SDK_JSON
+FIREBASE_SERVICE_ACCOUNT
 ```
 
 GitHub の対象リポジトリで、`Settings` → `Secrets and variables` → `Actions` → `New repository secret` を開き、サービスアカウント JSON の内容全体を登録する。JSON をリポジトリ内のファイルとして追加してはいけない。
@@ -75,7 +75,7 @@ GitHub の対象リポジトリで、`Settings` → `Secrets and variables` → 
 GitHub CLI を使用する場合は、認証 JSON の内容を画面へ出力せず、ファイルから直接登録する。
 
 ```bash
-gh secret set FIREBASE_ADMIN_SDK_JSON < /path/to/firebase-service-account.json
+gh secret set FIREBASE_SERVICE_ACCOUNT < /path/to/firebase-service-account.json
 gh secret list
 ```
 
@@ -114,23 +114,23 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install Pipenv and dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip pipenv
-          pipenv install --dev
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Prepare Firebase credentials
         env:
-          FIREBASE_ADMIN_SDK_JSON: ${{ secrets.FIREBASE_ADMIN_SDK_JSON }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          test -n "$FIREBASE_ADMIN_SDK_JSON"
-          printf '%s' "$FIREBASE_ADMIN_SDK_JSON" > "$RUNNER_TEMP/firebase-service-account.json"
+          test -n "$FIREBASE_SERVICE_ACCOUNT"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
           chmod 600 "$RUNNER_TEMP/firebase-service-account.json"
 
       - name: Run update with defaults
         env:
-          FIREBASE_ADMIN_SDK: ${{ runner.temp }}/firebase-service-account.json
-        run: pipenv run python scripts/run.py update
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: python scripts/run.py update
 
       - name: Upload scraper log
         if: always()
@@ -145,7 +145,7 @@ jobs:
 設定上の要点は次のとおり。
 
 - Secret の JSON は実行時だけ `$RUNNER_TEMP` 配下へ作成する。
-- `FIREBASE_ADMIN_SDK` には一時ファイルの絶対パスを渡す。
+- `GOOGLE_APPLICATION_CREDENTIALS` には一時ファイルの絶対パスを渡す。
 - `permissions` はリポジトリ内容の読み取りだけに限定する。
 - `concurrency` により、定期実行と手動実行が重なって同時更新されることを防ぐ。
 - 実行後の一時ファイルは GitHub-hosted runner の破棄とともに削除される。
@@ -162,15 +162,26 @@ jobs:
 
 注意: 現在の実装では、一部の情報元が失敗して結果が `-1` になっても、コマンド全体は終了コード `0` になる。Workflow が成功表示でも、初回確認では出力 JSON と `scraper.log` の両方を確認する。
 
-## 7. 定期実行の有効化
+## 7. 定期実行の設定
 
-手動実行が安定してから `schedule` を追加する。GitHub Actions の cron は UTC で指定する。例として、日本時間の毎日 06:15 に実行する場合は前日の 21:15 UTC となる。
+初期設定では、日本時間の毎日 12:15、15:15、18:15 に実行する。同じ分で複数の時刻を指定する場合は、cron の「時」フィールドをカンマ区切りにできる。
 
 ```yaml
 on:
   workflow_dispatch:
   schedule:
-    - cron: "15 21 * * *"
+    - cron: "15 12,15,18 * * *"
+      timezone: "Asia/Tokyo"
+```
+
+曜日や分が異なるなど、実行条件が別の場合は `schedule` の項目を複数記述する。
+
+```yaml
+schedule:
+  - cron: "15 12 * * 1-5"
+    timezone: "Asia/Tokyo"
+  - cron: "45 18 * * 6,0"
+    timezone: "Asia/Tokyo"
 ```
 
 GitHub のスケジュール実行は指定時刻ちょうどに開始されない場合がある。更新間隔に厳密な時刻保証が必要な用途には使用しない。
@@ -181,7 +192,7 @@ GitHub のスケジュール実行は指定時刻ちょうどに開始されな�
 - [ ] Cloud Firestore の既定データベースが存在する。
 - [ ] `timeLog/lastTime` ドキュメントが存在する。
 - [ ] GitHub Actions 専用サービスアカウントに必要最小限の権限がある。
-- [ ] Repository Secret `FIREBASE_ADMIN_SDK_JSON` が登録されている。
+- [ ] Repository Secret `FIREBASE_SERVICE_ACCOUNT` が登録されている。
 - [ ] 認証 JSON が Git 管理対象に追加されていない。
 - [ ] `.github/workflows/update.yml` が手動実行できる。
 - [ ] 既定の3日範囲で記事が重複せず追加される。
@@ -192,7 +203,7 @@ GitHub のスケジュール実行は指定時刻ちょうどに開始されな�
 
 ### Secret が未設定または空
 
-`Prepare Firebase credentials` の `test -n` で停止する。Secret 名が `FIREBASE_ADMIN_SDK_JSON` と完全一致しているか確認する。fork からの pull request など、Secrets が渡されないイベントでは更新処理を実行しない。
+`Prepare Firebase credentials` の `test -n` で停止する。Secret 名が `FIREBASE_SERVICE_ACCOUNT` と完全一致しているか確認する。fork からの pull request など、Secrets が渡されないイベントでは更新処理を実行しない。
 
 ### 認証 JSON を読み込めない
 

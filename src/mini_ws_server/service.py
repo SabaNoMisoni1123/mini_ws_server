@@ -1,6 +1,7 @@
 """記事取得から重複判定・保存までを調整するアプリケーションサービス。"""
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -31,7 +32,9 @@ class MinistrySiteDataGetter:
         if repository is None:
             from .repositories.firestore import FirestoreRepository
 
-            repository = FirestoreRepository(credential_path)
+            repository = FirestoreRepository(
+                credential_path or os.environ.get("FIREBASE_ADMIN_SDK")
+            )
         self.repository = repository
 
     def update_all_data(self, site_dict: dict, days: int = 3) -> dict[str, int]:

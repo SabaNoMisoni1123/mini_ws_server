@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +21,46 @@ class FirestoreRepositoryTest(unittest.TestCase):
     def setUp(self):
         self.repository = FirestoreRepository.__new__(FirestoreRepository)
         self.repository.db = Mock()
+
+    @patch("mini_ws_server.repositories.firestore.firestore.client")
+    @patch("mini_ws_server.repositories.firestore.firebase_admin.initialize_app")
+    @patch("mini_ws_server.repositories.firestore.firebase_admin.get_app")
+    def test_init_uses_application_default_credentials(
+        self, get_app, initialize_app, firestore_client
+    ):
+        get_app.side_effect = ValueError
+
+        repository = FirestoreRepository()
+
+        initialize_app.assert_called_once_with()
+        self.assertIs(repository.db, firestore_client.return_value)
+
+    @patch("mini_ws_server.repositories.firestore.firestore.client")
+    @patch("mini_ws_server.repositories.firestore.credentials.Certificate")
+    @patch("mini_ws_server.repositories.firestore.firebase_admin.initialize_app")
+    @patch("mini_ws_server.repositories.firestore.firebase_admin.get_app")
+    def test_init_keeps_explicit_credential_path_support(
+        self, get_app, initialize_app, certificate, firestore_client
+    ):
+        get_app.side_effect = ValueError
+
+        FirestoreRepository("credentials/firebase.json")
+
+        expected_path = PROJECT_ROOT / "credentials" / "firebase.json"
+        certificate.assert_called_once_with(str(expected_path))
+        initialize_app.assert_called_once_with(certificate.return_value)
+
+    @patch("mini_ws_server.repositories.firestore.firestore.client")
+    @patch("mini_ws_server.repositories.firestore.firebase_admin.initialize_app")
+    @patch("mini_ws_server.repositories.firestore.firebase_admin.get_app")
+    def test_init_reuses_existing_firebase_app(
+        self, get_app, initialize_app, firestore_client
+    ):
+        get_app.return_value = object()
+
+        FirestoreRepository()
+
+        initialize_app.assert_not_called()
 
     def test_list_site_data_keeps_all_data_and_document_reference(self):
         reference = Mock()
