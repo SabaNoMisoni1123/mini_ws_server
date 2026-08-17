@@ -9,7 +9,7 @@ from firebase_admin import credentials, firestore
 
 
 LOGGER = logging.getLogger(__name__)
-DEFAULT_CREDENTIAL_FILENAME = "ws-db-11235813-firebase-adminsdk-lh4mi-50c38e64b5.json"
+DEFAULT_CREDENTIAL_FILENAME = "ws-db-11235813-firebase-adminsdk-lh4mi-440ec2e232.json"
 
 
 class FirestoreRepository:

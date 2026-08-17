@@ -18,3 +18,4 @@ test*
 /**/tmp/
 /**/*.Identifier
 
+ws-db-11235813-firebase-adminsdk-*

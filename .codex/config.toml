@@ -6,11 +6,12 @@
 # $HOME/.codex/config.toml には、プロジェクトの trust_level だけを置く。
 
 # model
-model = "gpt-5.6"
-model_reasoning_effort = "medium"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "low"
 # 性能優先時の候補: medium, high, xhigh
 
-model_reasoning_summary = "concise"
+model_reasoning_summary = "none"
+# model_reasoning_summary = "concise"
 # さらに削減する場合の候補:
 # model_reasoning_summary = "none"
 # 性能・状況把握を優先する場合の候補:
