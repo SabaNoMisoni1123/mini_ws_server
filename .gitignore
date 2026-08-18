@@ -15,7 +15,9 @@ test*
 !tests/
 !tests/test_source_sync.py
 !tests/test_firestore_repository.py
+!tests/test_cli_credentials.py
 /**/tmp/
 /**/*.Identifier
 
 ws-db-11235813-firebase-adminsdk-*
+firebase-service-account.json

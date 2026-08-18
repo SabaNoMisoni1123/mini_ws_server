@@ -24,11 +24,17 @@ pip install -e .
 ```
 
 Firestore を使用する実行は Google Application Default Credentials（ADC）で認証します。
-ローカルでは、サービスアカウント JSON のパスを `GOOGLE_APPLICATION_CREDENTIALS` に指定します。
-従来の `FIREBASE_ADMIN_SDK` も互換性のため利用できます。認証情報はリポジトリに追加しないでください。
+GitHub Actions では、ワークフローが Secret から一時ファイルを作成し、`GOOGLE_APPLICATION_CREDENTIALS` を設定します。
+ローカルでは `update` の `--credential-path` にサービスアカウント JSON を指定できます。フラグを省略した場合、互換用の `FIREBASE_ADMIN_SDK` が設定されていればそのパスを使い、未設定なら `GOOGLE_APPLICATION_CREDENTIALS` を含む実行環境の ADC を利用します。認証情報はリポジトリに追加しないでください。
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="$PWD/ws-db-11235813-firebase-adminsdk-lh4mi-440ec2e232.json"
+pipenv run python scripts/run.py update --credential-path "C:\\path\\to\\firebase-service-account.json"
+```
+
+環境変数を使う場合は、従来どおり次の形式でも実行できます。
+
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\path\to\firebase-service-account.json"
 pipenv run python scripts/run.py update
 ```
 

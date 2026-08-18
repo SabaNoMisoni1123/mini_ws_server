@@ -21,10 +21,12 @@ HELP_TEXT = "このヘルプを表示して終了します。"
 RUN_ARGUMENT_GUIDE = """実行形式と実行時引数:
   update
       [--days-range N] [--log-file PATH] [--log-level LEVEL]
-      [--allow-partial-success]。すべての有効な情報元を更新します。
+      [--credential-path PATH] [--allow-partial-success]。すべての有効な情報元を更新します。
       --days-range N: 確認する過去の日数（実行日を含む、既定値: 3）。
       --log-file PATH: 指定時だけログをファイルにも保存します。
       --log-level LEVEL: DEBUG、INFO、WARNING、ERROR（既定値: INFO）。
+      --credential-path PATH: ローカルの Firebase サービスアカウント JSON。
+          省略時は環境変数などの Application Default Credentials を使用します。
       --allow-partial-success: 部分失敗があっても終了コード0を返します。
   check-source [SITE_ID]
       SITE_ID: 確認する候補情報元のID。省略時は先頭の候補を使用します。
@@ -98,6 +100,15 @@ def build_parser() -> argparse.ArgumentParser:
         choices=cli.LOG_LEVELS,
         default="INFO",
         help="ログレベル（既定値: %(default)s）。",
+    )
+    update.add_argument(
+        "--credential-path",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "ローカルの Firebase サービスアカウント JSON。省略時は "
+            "GOOGLE_APPLICATION_CREDENTIALS などの Application Default Credentials を使用します。"
+        ),
     )
     update.add_argument(
         "--allow-partial-success",
@@ -346,6 +357,7 @@ def main(argv: list[str] | None = None) -> int:
             log_file=args.log_file,
             log_level=args.log_level,
             allow_partial_success=args.allow_partial_success,
+            credential_path=args.credential_path,
         )
     if args.command == "check-source":
         return _check_source(args.site_id)

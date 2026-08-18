@@ -72,6 +72,7 @@ def main(
     log_file: Path | None = None,
     log_level: str = "INFO",
     allow_partial_success: bool = False,
+    credential_path: Path | None = None,
 ) -> int:
     """サイト定義を読み込み、全サイトの新着情報を更新する。"""
     try:
@@ -86,7 +87,7 @@ def main(
 
     try:
         site_dict = load_site_config(SOURCES_PATH)
-        scraper = MinistrySiteDataGetter()
+        scraper = MinistrySiteDataGetter(credential_path=credential_path)
         result = scraper.update_all_data(site_dict, days=days_range)
     except Exception as exc:
         LOGGER.error("Fatal error (%s)", type(exc).__name__)
@@ -125,6 +126,15 @@ def command_line_main(argv: list[str] | None = None) -> int:
         help="ログレベル（既定値: %(default)s）。",
     )
     parser.add_argument(
+        "--credential-path",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "ローカルの Firebase サービスアカウント JSON。省略時は "
+            "GOOGLE_APPLICATION_CREDENTIALS などの Application Default Credentials を使用します。"
+        ),
+    )
+    parser.add_argument(
         "--allow-partial-success",
         action="store_true",
         help="部分失敗があっても終了コード 0 を返します。",
@@ -135,4 +145,5 @@ def command_line_main(argv: list[str] | None = None) -> int:
         log_file=args.log_file,
         log_level=args.log_level,
         allow_partial_success=args.allow_partial_success,
+        credential_path=args.credential_path,
     )
